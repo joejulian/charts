@@ -1,0 +1,22 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{ template "traefik.fullname" . }}-test
+  labels:
+    app: {{ template "traefik.fullname" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    heritage: "{{ .Release.Service }}"
+    release: "{{ .Release.Name }}"
+spec:
+  selector:
+    app: {{ template "traefik.name" . }}
+    release: {{ .Release.Name }}
+  ports:
+    - port: 80
+      name: http
+      targetPort: http
+    - port: 443
+      name: https
+      {{- if not .Values.ssl.enabled }}
+      targetPort: httpn
+      {{- end }}

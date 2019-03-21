@@ -10,7 +10,7 @@ metadata:
 data:
   run.sh: |-
     @test "Testing LoadBalancer" {
-      sleep 30
-      curl http://{{ template "traefik.fullname" . }}-test/
+      sleep 5 
+      curl -D - http://{{ template "traefik.fullname" . }}/
     }
 

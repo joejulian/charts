@@ -1,0 +1,1 @@
+{{- /* rspamd does not expose an ingress by default */ -}}

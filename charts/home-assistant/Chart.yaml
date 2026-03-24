@@ -3,6 +3,7 @@ annotations:
     - kind: changed
       description: use template to generate README.md
 apiVersion: v2
+# renovate: image=ghcr.io/home-assistant/home-assistant
 appVersion: 2025.12.4
 dependencies:
 - name: common

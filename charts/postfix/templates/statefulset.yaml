@@ -1,0 +1,139 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "postfix.fullname" . }}
+  labels:
+    {{- include "postfix.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  serviceName: {{ .Values.service.name }}
+  podManagementPolicy: Parallel
+  selector:
+    matchLabels:
+      {{- include "postfix.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "postfix.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "postfix.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+                - key: "app"
+                  operator: In
+                  values:
+                  - {{ include "postfix.name" . }}
+            topologyKey: kubernetes.io/hostname
+      containers:
+        - name: postfix
+          image: "{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          command:
+            - postfix
+            - -c
+            - /config
+            - start-fg
+          env:
+            - name: SASL_CONF_PATH
+              value: /config
+          ports:
+            - name: smtp
+              containerPort: 25
+              protocol: TCP
+            - name: submission
+              containerPort: 587
+              protocol: TCP
+          livenessProbe:
+            tcpSocket:
+              port: smtp
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            tcpSocket:
+              port: smtp
+          volumeMounts:
+            - name: postfix-config
+              mountPath: /config
+{{- if .Values.tls.enabled }}
+            - name: postfix-certs
+              mountPath: /certs
+{{- end }}
+{{- if .Values.saslauthd.enabled }}
+            - name: sasl-smtpd
+              mountPath: /etc/sasl2
+            - name: socket
+              mountPath: /socket
+{{- end }}
+            - name: spool
+              mountPath: /spool
+            - name: pid
+              mountPath: /spool/pid
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+        {{- if .Values.saslauthd.enabled }}
+        - name: saslauthd
+          image: "{{ .Values.saslauthd.image.repository }}:{{ .Values.saslauthd.image.tag }}"
+          imagePullPolicy: {{ .Values.saslauthd.image.pullPolicy }}
+          command:
+            - fsyslog
+            - -command
+            - saslauthd -d -O /config/saslauthd.conf -a ldap -m /socket
+          volumeMounts:
+            - name: socket
+              mountPath: /socket
+            - name: saslauthd-conf
+              mountPath: /config
+        {{- end }}
+      volumes:
+        - name: postfix-config
+          configMap:
+            name: {{ .Values.config.existingConfigMap }}
+{{- if .Values.tls.enabled }}
+        - name: postfix-certs
+          secret:
+            secretName: {{ .Values.config.certificateSecretName }}
+{{- end }}
+{{- if .Values.saslauthd.enabled }}
+        - name: sasl-smtpd
+          secret:
+            secretName: {{ .Values.config.saslSmtpdSecretName }}
+        - name: saslauthd-conf
+          secret:
+            secretName: {{ .Values.config.saslauthdConfigSecretName }}
+        - name: socket
+          emptyDir: {}
+{{- end }}
+        - name: pid
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  volumeClaimTemplates:
+      - metadata:
+          name: spool
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: {{ .Values.persistence.spool.size }}

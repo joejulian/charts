@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Release.Name }}-test-connection"
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ["sh", "-ec"]
+      args:
+        - |
+          i=0
+          until wget -T 5 -qO- http://{{ .Release.Name }}:8123/manifest.json >/dev/null; do
+            i=$((i + 1))
+            if [ "$i" -ge 24 ]; then
+              exit 1
+            fi
+            sleep 5
+          done
+  restartPolicy: Never

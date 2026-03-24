@@ -1,0 +1,118 @@
+# Default values for postfix.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: registry.gitlab.com/joejulian/container-postfix
+  pullPolicy: IfNotPresent
+  tag: ""
+
+saslauthd:
+  enabled: true
+  image:
+    repository: registry.gitlab.com/joejulian/container-saslauthd
+    tag: latest
+    pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+tls:
+  enabled: false
+  dnsnames: []
+  issuerRef:
+    kind: Issuer
+    name: ""
+  duration: 90d
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  annotations: {}
+  type: ClusterIP
+  externalTrafficPolicy: Cluster
+  loadBalancerIP: ""
+  name: smtp
+  ports:
+    smtp:
+      port: 25
+      targetPort: smtp
+      protocol: TCP
+    submission:
+      port: 587
+      targetPort: submission
+      protocol: TCP
+
+config:
+  existingConfigMap: postfix
+  certificateSecretName: postfix-certificate
+  saslSmtpdSecretName: sasl-smtpd
+  saslauthdConfigSecretName: cyrus-imap-saslauthd-config
+
+persistence:
+  spool:
+    size: 1Gi
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

@@ -1,0 +1,25 @@
+{{- if eq .Values.service.enabled true }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-service
+  namespace: {{ .Release.Namespace }}
+  labels:
+    name: {{ .Release.Name }}-service
+    heritage: {{ .Release.Service | quote }}
+    release: {{ .Release.Name | quote }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    component: "{{ .Release.Name }}"
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - name: nzbgetsvc
+      port: 6789
+      targetPort: 6789
+    - name: oauth2
+      port: 4180
+      targetPort: 4180
+  selector:
+    k8s-app: {{ .Release.Name }}
+{{- end }}

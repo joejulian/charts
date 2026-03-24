@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.service.name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "postfix.labels" . | nindent 4 }}
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  {{- if or (eq .Values.service.type "LoadBalancer") (eq .Values.service.type "NodePort") }}
+  externalTrafficPolicy: {{ .Values.service.externalTrafficPolicy }}
+  {{- end }}
+  {{- with .Values.service.loadBalancerIP }}
+  loadBalancerIP: {{ . }}
+  {{- end }}
+  ports:
+  - name: smtp
+    port: {{ .Values.service.ports.smtp.port }}
+    protocol: {{ .Values.service.ports.smtp.protocol }}
+    targetPort: {{ .Values.service.ports.smtp.targetPort }}
+  - name: submission
+    port: {{ .Values.service.ports.submission.port }}
+    protocol: {{ .Values.service.ports.submission.protocol }}
+    targetPort: {{ .Values.service.ports.submission.targetPort }}
+  selector:
+    {{- include "postfix.selectorLabels" . | nindent 4 }}
+  sessionAffinity: None

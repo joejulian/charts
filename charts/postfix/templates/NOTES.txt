@@ -1,0 +1,8 @@
+1. Verify the SMTP service:
+  kubectl get svc --namespace {{ .Release.Namespace }} {{ .Values.service.name }}
+
+2. Check the postfix pods:
+  kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/instance={{ .Release.Name }}"
+
+3. Run the chart smoke test:
+  helm test {{ .Release.Name }} --namespace {{ .Release.Namespace }}

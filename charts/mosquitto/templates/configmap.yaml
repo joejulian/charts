@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "mosquitto.fullname" . }}
+  labels:
+    {{- include "mosquitto.labels" . | nindent 4 }}
+data:
+  mosquitto.conf: |
+    log_dest stdout
+    per_listener_settings {{ .Values.mosquitto.perListenerSettings }}
+    listener {{ .Values.service.ports.mqtt.port }}
+    allow_anonymous {{ .Values.mosquitto.auth.allowAnonymous }}

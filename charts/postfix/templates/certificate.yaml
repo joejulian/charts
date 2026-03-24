@@ -1,0 +1,14 @@
+{{- if and .Values.tls.enabled .Values.tls.issuerRef.name }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "postfix.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  secretName: {{ .Values.config.certificateSecretName }}
+  issuerRef: {{ .Values.tls.issuerRef | nindent 4 }}
+  {{ with .Values.tls.dnsnames }}
+  dnsNames: {{ toYaml . | nindent 4 }}
+  {{ end }}
+  duration: {{ .Values.tls.duration | quote }}
+{{- end }}

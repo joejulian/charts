@@ -1,0 +1,12 @@
+apiVersion: v1
+description: A Helm chart for sonarr
+name: sonarr
+# renovate: image=linuxserver/sonarr
+appVersion: "latest"
+home: https://github.com/joejulian/charts/tree/master/charts/sonarr
+maintainers:
+  - name: Joe Julian
+    email: me@joejulian.name
+sources:
+  - https://github.com/linuxserver/docker-sonarr
+version: 0.0.2

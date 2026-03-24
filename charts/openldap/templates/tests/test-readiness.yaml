@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: "{{ template "openldap.fullname" . }}-test"
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: "{{ template "openldap.fullname" . }}-test"
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: "{{ template "openldap.fullname" . }}-test"
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+subjects:
+  - kind: ServiceAccount
+    name: "{{ template "openldap.fullname" . }}-test"
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: "{{ template "openldap.fullname" . }}-test"
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ template "openldap.fullname" . }}-test-readiness"
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  serviceAccountName: "{{ template "openldap.fullname" . }}-test"
+  containers:
+    - name: kubectl
+      image: rancher/kubectl:v1.32.2
+      command: ["kubectl"]
+      args:
+        - rollout
+        - status
+        - deployment/{{ template "openldap.fullname" . }}
+        - -n
+        - {{ .Release.Namespace }}
+        - --timeout=180s
+  restartPolicy: Never

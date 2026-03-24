@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "postfix.fullname" . }}-test-connection"
+  labels:
+    {{- include "postfix.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: smtp
+      image: bash:5.2.37
+      command: ['bash', '-ec']
+      args:
+        - |
+          exec 3<>/dev/tcp/{{ .Values.service.name }}/{{ .Values.service.ports.smtp.port }}
+          IFS= read -r banner <&3
+          echo "${banner}" | grep -q '^220 '
+          printf 'QUIT\r\n' >&3
+  restartPolicy: Never

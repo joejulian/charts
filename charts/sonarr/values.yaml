@@ -1,0 +1,50 @@
+# Default values for sonarr.
+replicaCount: 1
+sonarr:
+  uid: 0
+  gid: 0
+  tz: UTC
+  mediaPath: /tv
+  sharedMedia:
+    hostPath:
+      path: /tv
+image:
+  repository: linuxserver/sonarr
+  tag: ""
+  pullPolicy: Always
+resources:
+  limits:
+    cpu: 100m
+    memory: 1Gi
+  requests:
+    cpu: 100m
+    memory: 900Mi
+
+oauth_proxy:
+  enabled: false
+  image: quay.io/coreos/oauth2_proxy
+  version: latest
+  provider: gitlab
+  # gitlab_url: ""
+  cookieSecret: changeme
+  cookieExpire: 168h0m
+  cookieRefresh: 60m
+  authorizedDomains:
+    - domain.dom
+  clientId:
+  clientSecret:
+
+service:
+  enabled: false
+  name: sonarr
+  type: ClusterIP
+  internalPort: 8989
+  externalPort: 8989
+
+ingress:
+  enabled: false
+  class: nginx
+  # Used to create Ingress record (should used with service.type: ClusterIP).
+  host: sonarr
+  domain: domain.dom
+  tls: []

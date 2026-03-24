@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    k8s-app: {{ .Release.Name }}
+    name: {{ .Release.Name }}
+    heritage: {{ .Release.Service | quote }}
+    release: {{ .Release.Name | quote }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    component: "{{ .Release.Name }}"
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      k8s-app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        k8s-app: {{ .Release.Name }}
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: {{ .Release.Name }}
+          image: {{ .Values.image }}:{{ default .Chart.AppVersion .Values.version }}
+          command:
+            - nzbget
+            - --configfile
+            - /mnt/config/nzbget.conf
+            - --server
+            - --option
+            - OutputMode=log
+          volumeMounts:
+            - name: config-volume
+              mountPath: /mnt/config
+{{- if .Values.nzbget.mediaVolume }}
+            - name: media-volume
+              mountPath: {{ .Values.nzbget.mainDir }}
+{{- end }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 6789
+              scheme: HTTP
+            initialDelaySeconds: 30
+            timeoutSeconds: 5
+          ports:
+            - containerPort: 6789
+{{- if eq .Values.oauth_proxy.enabled true }}
+        - name: {{ .Release.Name }}-oauth-proxy
+          image: {{ .Values.oauth_proxy.image }}:{{ .Values.oauth_proxy.version }}
+          imagePullPolicy: Always
+          args:
+            - -cookie-domain=.{{ .Values.ingress.domain }}
+            - -upstream=http://localhost:6789/
+            - -provider={{ .Values.oauth_proxy.provider }}
+{{- if .Values.oauth_proxy.gitlab_url }}
+            - -login-url={{ .Values.oauth_proxy.gitlab_url }}/oauth/authorize
+            - -redeem-url={{ .Values.oauth_proxy.gitlab_url }}/oauth/token
+            - -validate-url={{ .Values.oauth_proxy.gitlab_url }}/api/v3/user
+{{- end }}
+            - -cookie-name={{ .Release.Name }}_oauth2_proxy
+            - -cookie-secret={{ .Values.oauth_proxy.cookieSecret }}
+            - -cookie-secure=true
+            - -cookie-expire={{ .Values.oauth_proxy.cookieExpire }}
+            - -cookie-refresh={{ .Values.oauth_proxy.cookieRefresh }}
+  {{- range .Values.oauth_proxy.authorizedDomains }}
+            - -email-domain={{ . }}
+  {{- end }}
+            - -request-logging=true
+            - -http-address=0.0.0.0:4180
+          env:
+            - name: OAUTH2_PROXY_CLIENT_ID
+              value: {{ .Values.oauth_proxy.clientId }}
+            - name: OAUTH2_PROXY_CLIENT_SECRET
+              value: {{ .Values.oauth_proxy.clientSecret }}
+          livenessProbe:
+            httpGet:
+              path: /oauth2/sign_in
+              port: 4180
+              scheme: HTTP
+            initialDelaySeconds: 30
+            timeoutSeconds: 5
+          ports:
+            - containerPort: 4180
+{{- end }}
+      volumes:
+        - name: config-volume
+          configMap:
+            defaultMode: 0644
+            name: {{ .Release.Name }}-conf
+{{- if .Values.nzbget.mediaVolume }}
+{{ toYaml .Values.nzbget.mediaVolume | indent 8 }}
+{{- end }}

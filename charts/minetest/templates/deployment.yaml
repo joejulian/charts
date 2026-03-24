@@ -11,6 +11,7 @@ spec:
   replicas: {{ .Values.replicaCount }}
   strategy:
     type: Recreate
+    rollingUpdate: null
   selector:
     matchLabels:
       app: {{ template "minetest.name" . }}
@@ -56,7 +57,7 @@ spec:
               mountPath: /config
             - name: data
               mountPath: /data
-            - name: world-mt
+            - name: world-secret
               mountPath: /data/world.mt
               subPath: {{ .Values.world.secretKey }}
           ports:
@@ -77,7 +78,7 @@ spec:
         - name: data
           persistentVolumeClaim:
               claimName: {{ default (printf "%s-data" .Release.Name) .Values.persistence.existingClaim }}
-        - name: world-mt
+        - name: world-secret
           secret:
             secretName: {{ .Values.world.existingSecret }}
         - name: mods

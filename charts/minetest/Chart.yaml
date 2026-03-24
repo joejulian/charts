@@ -9,4 +9,4 @@ maintainers:
     email: me@joejulian.name
 sources:
   - https://github.com/minetest/minetest
-version: 0.0.4
+version: 0.0.5

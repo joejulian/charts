@@ -42,20 +42,54 @@ jobs:
     needs: lint
     permissions:
       contents: read
+    outputs:
+      chart_count: ${{ steps.charts.outputs.chart_count }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: azure/setup-helm@v4
       - name: Add Helm Repositories
         run: ./scripts/setup-helm-repos.sh
+      - name: Select Charts
+        id: charts
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          if [[ "${EVENT_NAME}" == "pull_request" ]]; then
+            base_ref="${PR_BASE_SHA}"
+            mapfile -t charts < <(./scripts/list-changed-charts.sh "${base_ref}" HEAD)
+          else
+            mapfile -t charts < <(./scripts/list-charts.sh)
+          fi
+
+          printf 'chart_count=%s\n' "${#charts[@]}" >> "${GITHUB_OUTPUT}"
+
+          {
+            printf 'charts<<EOF\n'
+            printf '%s\n' "${charts[@]}"
+            printf 'EOF\n'
+          } >> "${GITHUB_OUTPUT}"
       - uses: helm/kind-action@v1.12.0
+        if: steps.charts.outputs.chart_count != '0'
         with:
           config: kind-config.yaml
       - name: Make Scripts Executable
+        if: steps.charts.outputs.chart_count != '0'
         run: chmod +x scripts/*.sh
       - name: Test Charts
+        if: steps.charts.outputs.chart_count != '0'
         env:
           ONSTAR2MQTT_TEST_SECRET: ${{ secrets.ONSTAR2MQTT_TEST_SECRET }}
-        run: ./scripts/test-charts.sh
+          CHARTS: ${{ steps.charts.outputs.charts }}
+        run: |
+          mapfile -t charts <<< "${CHARTS}"
+          ./scripts/test-charts.sh "${charts[@]}"
+      - name: Skip E2E
+        if: steps.charts.outputs.chart_count == '0'
+        run: echo "No chart changes detected; skipping install/upgrade/e2e."
       - name: Dump Cluster State
         if: failure()
         run: |

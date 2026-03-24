@@ -1,0 +1,13 @@
+apiVersion: v2
+name: external-dns
+description: ExternalDNS deployment with configurable arguments and RBAC
+type: application
+version: 0.1.0
+# renovate: image=registry.k8s.io/external-dns/external-dns
+appVersion: "v0.12.2"
+home: https://github.com/joejulian/charts/tree/main/charts/external-dns
+maintainers:
+  - name: Joe Julian
+    email: me@joejulian.name
+sources:
+  - https://github.com/kubernetes-sigs/external-dns

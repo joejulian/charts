@@ -10,6 +10,7 @@ nameOverride: ""
 fullnameOverride: ""
 podAnnotations: {}
 podLabels: {}
+selectorLabels: {}
 resources: {}
 
 podSecurityContext:

@@ -2,7 +2,7 @@ apiVersion: v2
 name: plex
 description: Plex Media Server chart with GPU, certificate, ingress, and LB options
 type: application
-version: 0.1.0
+version: 0.1.1
 # renovate: image=registry.gitlab.com/joejulian/container-plex-media-server-plexpass
 appVersion: "latest"
 home: https://github.com/joejulian/charts/tree/main/charts/plex

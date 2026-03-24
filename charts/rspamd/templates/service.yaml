@@ -1,0 +1,33 @@
+{{- if .Values.services.proxy.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "rspamd.fullname" . }}
+  labels:
+    {{- include "rspamd.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.services.proxy.type }}
+  selector:
+    {{- include "rspamd.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: proxy
+      port: {{ .Values.services.proxy.port }}
+      targetPort: proxy
+{{- end }}
+{{- if .Values.services.controller.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "rspamd.fullname" . }}-controller
+  labels:
+    {{- include "rspamd.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.services.controller.type }}
+  selector:
+    {{- include "rspamd.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: controller
+      port: {{ .Values.services.controller.port }}
+      targetPort: controller
+{{- end }}

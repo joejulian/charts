@@ -1,0 +1,54 @@
+replicaCount: 1
+
+image:
+  repository: registry.gitlab.com/joejulian/container-rspamd
+  pullPolicy: IfNotPresent
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+podAnnotations: {}
+podLabels: {}
+resources: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+config:
+  local:
+    actions.conf: |
+      reject = 15;
+      add_header = 5;
+      greylist = 10;
+    logging.inc: |
+      type = "console";
+      level = "warning";
+    worker-controller.inc: |
+      bind_socket = "0.0.0.0:11334";
+    worker-normal.inc: |
+      bind_socket = "0.0.0.0:11333";
+    worker-proxy.inc: |
+      bind_socket = "0.0.0.0:11332";
+  override: {}
+
+persistence:
+  enabled: false
+  existingClaim: ""
+  accessModes:
+    - ReadWriteOnce
+  size: 5Gi
+
+dkim:
+  existingSecret: ""
+  inlineSecretData: {}
+
+services:
+  proxy:
+    enabled: true
+    type: ClusterIP
+    port: 11332
+  controller:
+    enabled: true
+    type: ClusterIP
+    port: 11334

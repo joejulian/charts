@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "rspamd.fullname" . }}
+  labels:
+    {{- include "rspamd.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "rspamd.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "rspamd.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: rspamd
+          image: "{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: proxy
+              containerPort: 11332
+            - name: normal
+              containerPort: 11333
+            - name: controller
+              containerPort: 11334
+            - name: fuzzy
+              containerPort: 11335
+          livenessProbe:
+            tcpSocket:
+              port: controller
+            initialDelaySeconds: 60
+          readinessProbe:
+            tcpSocket:
+              port: controller
+            initialDelaySeconds: 60
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: local-config
+              mountPath: /etc/rspamd/local.d
+            - name: override-config
+              mountPath: /etc/rspamd/override.d
+            - name: state
+              mountPath: /var/lib/rspamd
+            {{- if or .Values.dkim.existingSecret .Values.dkim.inlineSecretData }}
+            - name: dkim
+              mountPath: /var/lib/rspamd/dkim
+            {{- end }}
+      volumes:
+        - name: local-config
+          configMap:
+            name: {{ include "rspamd.fullname" . }}-local
+        - name: override-config
+          configMap:
+            name: {{ include "rspamd.fullname" . }}-override
+        - name: state
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ default (printf "%s-state" (include "rspamd.fullname" .)) .Values.persistence.existingClaim }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        {{- if or .Values.dkim.existingSecret .Values.dkim.inlineSecretData }}
+        - name: dkim
+          secret:
+            secretName: {{ default (printf "%s-dkim" (include "rspamd.fullname" .)) .Values.dkim.existingSecret }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

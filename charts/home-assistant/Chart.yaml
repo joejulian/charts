@@ -4,7 +4,7 @@ annotations:
       description: use template to generate README.md
 apiVersion: v2
 # renovate: image=ghcr.io/home-assistant/home-assistant
-appVersion: 2025.12.4
+appVersion: 2026.3.3
 dependencies:
 - name: common
   repository: https://bjw-s-labs.github.io/helm-charts/

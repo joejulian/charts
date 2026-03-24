@@ -5,13 +5,23 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BASE_REF="${1:-}"
 HEAD_REF="${2:-HEAD}"
 
+chart_json_from_file() {
+  local chart_file="$1"
+  python3 "${REPO_ROOT}/scripts/chart_yaml.py" json --file "${chart_file}"
+}
+
+chart_json_from_ref() {
+  local ref="$1"
+  local chart_dir="$2"
+  git -C "${REPO_ROOT}" show "${ref}:${chart_dir}/Chart.yaml" 2>/dev/null | python3 "${REPO_ROOT}/scripts/chart_yaml.py" json
+}
+
 chart_yaml_value() {
   local ref="$1"
   local chart_dir="$2"
   local key="$3"
 
-  git -C "${REPO_ROOT}" show "${ref}:${chart_dir}/Chart.yaml" 2>/dev/null \
-    | yq -r ".${key} // \"\"" -
+  chart_json_from_ref "${ref}" "${chart_dir}" | jq -r --arg key "${key}" '.[$key]'
 }
 
 normalize_semver() {
@@ -69,24 +79,25 @@ max_level() {
 
 required_chart_bump_level() {
   local chart_dir="$1"
-  local base_chart dep_name dep_version base_app_version head_app_version level
+  local base_chart head_chart dep_name dep_version base_app_version head_app_version level
   declare -A base_deps=()
   declare -A head_deps=()
 
-  base_chart="$(git -C "${REPO_ROOT}" show "${BASE_REF}:${chart_dir#${REPO_ROOT}/}/Chart.yaml")"
-  base_app_version="$(printf '%s' "${base_chart}" | yq -r '.appVersion // ""' -)"
-  head_app_version="$(yq -r '.appVersion // ""' "${chart_dir}/Chart.yaml")"
+  base_chart="$(chart_json_from_ref "${BASE_REF}" "${chart_dir#${REPO_ROOT}/}")"
+  head_chart="$(chart_json_from_file "${chart_dir}/Chart.yaml")"
+  base_app_version="$(jq -r '.appVersion' <<<"${base_chart}")"
+  head_app_version="$(jq -r '.appVersion' <<<"${head_chart}")"
   level="$(version_change_level "${base_app_version}" "${head_app_version}")"
 
   while IFS=$'\t' read -r dep_name dep_version; do
     [[ -n "${dep_name}" ]] || continue
     base_deps["${dep_name}"]="${dep_version}"
-  done < <(printf '%s' "${base_chart}" | yq -r '.dependencies[]? | [.name, (.version // "")] | @tsv' -)
+  done < <(jq -r '.dependencies | to_entries[]? | [.key, .value] | @tsv' <<<"${base_chart}")
 
   while IFS=$'\t' read -r dep_name dep_version; do
     [[ -n "${dep_name}" ]] || continue
     head_deps["${dep_name}"]="${dep_version}"
-  done < <(yq -r '.dependencies[]? | [.name, (.version // "")] | @tsv' "${chart_dir}/Chart.yaml")
+  done < <(jq -r '.dependencies | to_entries[]? | [.key, .value] | @tsv' <<<"${head_chart}")
 
   for dep_name in "${!base_deps[@]}"; do
     if [[ ! -v "head_deps[${dep_name}]" ]]; then
@@ -114,7 +125,7 @@ version_gt() {
 }
 
 main() {
-  local chart_dir chart_name base_chart_version head_chart_version required_level
+  local chart_dir chart_name base_chart_version head_chart_version required_level head_chart
   local base_chart_major base_chart_minor base_chart_patch head_chart_major head_chart_minor head_chart_patch
   local failed=0
   local -a changed_charts
@@ -139,7 +150,8 @@ main() {
     fi
 
     base_chart_version="$(chart_yaml_value "${BASE_REF}" "${chart_dir#${REPO_ROOT}/}" version)"
-    head_chart_version="$(yq -r '.version // ""' "${chart_dir}/Chart.yaml")"
+    head_chart="$(chart_json_from_file "${chart_dir}/Chart.yaml")"
+    head_chart_version="$(jq -r '.version' <<<"${head_chart}")"
 
     if ! version_gt "${head_chart_version}" "${base_chart_version}"; then
       echo "Chart ${chart_name}: Chart.yaml dependency or appVersion changed but chart version did not increase (${base_chart_version} -> ${head_chart_version})."

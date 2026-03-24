@@ -3,6 +3,21 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
+chart_json_from_file() {
+  local chart_file="$1"
+  python3 "${REPO_ROOT}/scripts/chart_yaml.py" json --file "${chart_file}"
+}
+
+chart_json_from_stdin() {
+  python3 "${REPO_ROOT}/scripts/chart_yaml.py" json
+}
+
+set_chart_version() {
+  local chart_file="$1"
+  local version="$2"
+  python3 "${REPO_ROOT}/scripts/chart_yaml.py" set-version --file "${chart_file}" --version "${version}"
+}
+
 normalize_semver() {
   local value="${1#v}"
 
@@ -58,25 +73,26 @@ max_level() {
 
 required_chart_bump_level() {
   local chart_file="$1"
-  local base_chart dep_name dep_version base_app_version current_app_version level dep_line
-  local current_chart="${REPO_ROOT}/${chart_file}"
+  local base_chart current_chart_json dep_name dep_version base_app_version current_app_version level
+  local current_chart_file="${REPO_ROOT}/${chart_file}"
   declare -A base_deps=()
   declare -A current_deps=()
 
-  base_chart="$(git -C "${REPO_ROOT}" show "HEAD:${chart_file}")"
-  base_app_version="$(printf '%s' "${base_chart}" | yq -r '.appVersion // ""' -)"
-  current_app_version="$(yq -r '.appVersion // ""' "${current_chart}")"
+  base_chart="$(git -C "${REPO_ROOT}" show "HEAD:${chart_file}" | chart_json_from_stdin)"
+  current_chart_json="$(chart_json_from_file "${current_chart_file}")"
+  base_app_version="$(jq -r '.appVersion' <<<"${base_chart}")"
+  current_app_version="$(jq -r '.appVersion' <<<"${current_chart_json}")"
   level="$(version_change_level "${base_app_version}" "${current_app_version}")"
 
   while IFS=$'\t' read -r dep_name dep_version; do
     [[ -n "${dep_name}" ]] || continue
     base_deps["${dep_name}"]="${dep_version}"
-  done < <(printf '%s' "${base_chart}" | yq -r '.dependencies[]? | [.name, (.version // "")] | @tsv' -)
+  done < <(jq -r '.dependencies | to_entries[]? | [.key, .value] | @tsv' <<<"${base_chart}")
 
   while IFS=$'\t' read -r dep_name dep_version; do
     [[ -n "${dep_name}" ]] || continue
     current_deps["${dep_name}"]="${dep_version}"
-  done < <(yq -r '.dependencies[]? | [.name, (.version // "")] | @tsv' "${current_chart}")
+  done < <(jq -r '.dependencies | to_entries[]? | [.key, .value] | @tsv' <<<"${current_chart_json}")
 
   for dep_name in "${!base_deps[@]}"; do
     if [[ ! -v "current_deps[${dep_name}]" ]]; then
@@ -97,7 +113,7 @@ required_chart_bump_level() {
 }
 
 main() {
-  local chart_file chart_dir chart_name base_chart_version current_chart_version required_level
+  local chart_file chart_dir chart_name base_chart_version current_chart_version required_level current_chart
   local major minor patch
   local -a changed_chart_files
 
@@ -116,8 +132,9 @@ main() {
       continue
     fi
 
-    base_chart_version="$(git -C "${REPO_ROOT}" show "HEAD:${chart_file}" | yq -r '.version // ""' -)"
-    current_chart_version="$(yq -r '.version // ""' "${chart_dir}/Chart.yaml")"
+    base_chart_version="$(git -C "${REPO_ROOT}" show "HEAD:${chart_file}" | chart_json_from_stdin | jq -r '.version')"
+    current_chart="$(chart_json_from_file "${chart_dir}/Chart.yaml")"
+    current_chart_version="$(jq -r '.version' <<<"${current_chart}")"
 
     if [[ "${base_chart_version}" != "${current_chart_version}" ]]; then
       continue
@@ -143,7 +160,7 @@ main() {
         ;;
     esac
 
-    yq -i ".version = \"${major}.${minor}.${patch}\"" "${chart_dir}/Chart.yaml"
+    set_chart_version "${chart_dir}/Chart.yaml" "${major}.${minor}.${patch}"
   done
 }
 

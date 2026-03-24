@@ -34,5 +34,6 @@ helm lint charts/<chart>
 
 ## Repository Secrets
 
-- `RENOVATE_TOKEN`: fine-grained GitHub token or Renovate app token with permission to open and update pull requests in this repository.
+- `RENOVATE_APP_ID`: GitHub App ID for the Renovate automation app installed on this repository.
+- `RENOVATE_APP_PRIVATE_KEY`: GitHub App private key PEM for generating short-lived installation tokens in the Renovate workflow.
 - `ONSTAR2MQTT_TEST_SECRET`: optional Kubernetes Secret manifest used to enable credentialed `onstar2mqtt` e2e coverage in CI.

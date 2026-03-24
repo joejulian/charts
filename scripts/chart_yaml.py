@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import re
 import sys
 
 import yaml
@@ -33,12 +34,19 @@ def cmd_json(args: argparse.Namespace) -> int:
 
 def cmd_set_version(args: argparse.Namespace) -> int:
     with open(args.file, encoding="utf-8") as handle:
-        data = yaml.safe_load(handle) or {}
+        content = handle.read()
 
-    data["version"] = args.version
+    updated, replacements = re.subn(
+        r"(?m)^version:\s*.*$",
+        f'version: "{args.version}"',
+        content,
+        count=1,
+    )
+    if replacements != 1:
+        raise SystemExit(f"expected exactly one top-level version field in {args.file}")
 
     with open(args.file, "w", encoding="utf-8") as handle:
-        yaml.safe_dump(data, handle, sort_keys=False)
+        handle.write(updated)
 
     return 0
 

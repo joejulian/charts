@@ -27,11 +27,9 @@ ingress:
   tls: []
 
 nzbget:
-  mainDir: /tmp
+  mainDir: /downloads
   mediaVolume:
-#    - name: media-volume
-#      hostPath:
-#        path: /mnt/media
+    emptyDir: {}
   config: |
     ##############################################################################
     ### PATHS                                                                  ###

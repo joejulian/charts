@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "transmission.fullname" . }}-test-connection"
+  labels:
+    {{- include "transmission.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  containers:
+    - name: transmission
+      image: curlimages/curl:8.12.1
+      command: ["sh", "-ec"]
+      args:
+        - |
+          code="$(curl -s -o /dev/null -w '%{http_code}' http://{{ include "transmission.fullname" . }}:{{ .Values.service.port }}/transmission/web/)"
+          [ "${code}" -ge 200 ] && [ "${code}" -lt 500 ]
+  restartPolicy: Never

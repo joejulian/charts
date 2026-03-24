@@ -1,6 +1,6 @@
 # home-assistant
 
-![Version: 2.0.0](https://img.shields.io/badge/Version-2.0.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2025.12.4](https://img.shields.io/badge/AppVersion-2025.12.4-informational?style=flat-square)
+![Version: 2.0.1](https://img.shields.io/badge/Version-2.0.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2025.12.4](https://img.shields.io/badge/AppVersion-2025.12.4-informational?style=flat-square)
 
 Open source home automation that puts local control and privacy first
 
@@ -21,9 +21,6 @@ Open source home automation that puts local control and privacy first
 | Repository | Name | Version |
 |------------|------|---------|
 | https://bjw-s-labs.github.io/helm-charts/ | common | ~4 |
-| https://charts.bitnami.com/bitnami | influxdb | 7.1.15 |
-| https://charts.bitnami.com/bitnami | mariadb | 22.0.0 |
-| https://charts.bitnami.com/bitnami | postgresql | 16.7.24 |
 
 ## Values
 
@@ -36,9 +33,7 @@ Open source home automation that puts local control and privacy first
 | controllers.main.containers.main.image.tag | string | `nil` |  |
 | controllers.main.containers.main.probes | object | See values.yaml | Configures the probes for the main Pod. |
 | controllers.main.containers.main.securityContext.privileged | bool | `false` | Privileged securityContext may be required if USB devices are accessed directly through the host machine |
-| influxdb | object | See values.yaml | Enable and configure influxdb database subchart under this key.    For more options see [influxdb chart documentation](https://github.com/bitnami/charts/tree/master/bitnami/influxdb) |
 | ingress.main | object | See values.yaml | Enable and configure ingress settings for the chart under this key. |
-| mariadb | object | See values.yaml | Enable and configure mariadb database subchart under this key.    For more options see [mariadb chart documentation](https://github.com/bitnami/charts/tree/master/bitnami/mariadb) |
 | metrics.enabled | bool | See values.yaml | Enable and configure a Prometheus serviceMonitor. |
 | metrics.prometheusRule | object | See values.yaml | Enable and configure Prometheus Rules for the chart under this key. |
 | metrics.prometheusRule.rules | list | See prometheusrules.yaml | Configure additionial rules for the chart under this key. |
@@ -47,7 +42,6 @@ Open source home automation that puts local control and privacy first
 | metrics.serviceMonitor.scrapeTimeout | string | `"30s"` |  |
 | persistence | object | See values.yaml | Configure persistence settings for the chart under this key. |
 | persistence.usb | object | See values.yaml | Configure a hostPathMount to mount a USB device in the container. |
-| postgresql | object | See values.yaml | Enable and configure postgresql database subchart under this key.    For more options see [postgresql chart documentation](https://github.com/bitnami/charts/tree/master/bitnami/postgresql) |
 | service | object | See values.yaml | Configures service settings for the chart. |
 
 ----------------------------------------------

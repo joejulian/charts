@@ -1,0 +1,31 @@
+image:
+  repository: registry.gitlab.com/joejulian/container-learnspam
+  pullPolicy: IfNotPresent
+  tag: ""
+
+nameOverride: ""
+fullnameOverride: ""
+
+schedule: "*/15 * * * *"
+activeDeadlineSeconds: 720
+ttlSecondsAfterFinished: 300
+restartPolicy: Never
+
+secretName: learner
+env:
+  - name: SPAMSCAN_USER
+    secretKey: user
+  - name: SPAMSCAN_PASSWORD
+    secretKey: password
+  - name: SPAMSCAN_HOST
+    secretKey: host
+  - name: SPAMSCAN_RSPAMD_CONTROLLER
+    secretKey: rspamd_controller
+  - name: SPAMSCAN_RSPAMD_PASSWORD
+    secretKey: rspamd_password
+  - name: SPAMSCAN_USE_SSL
+    secretKey: use_ssl
+  - name: SPAMSCAN_USE_TLS
+    secretKey: use_tls
+
+resources: {}

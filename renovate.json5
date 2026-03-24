@@ -6,7 +6,6 @@
     ":separateMajorReleases",
   ],
   labels: ["dependencies"],
-  automerge: true,
   automergeType: "pr",
   platformAutomerge: true,
   prHourlyLimit: 0,

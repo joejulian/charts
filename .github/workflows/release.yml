@@ -18,6 +18,8 @@ jobs:
         with:
           fetch-depth: 0
       - uses: azure/setup-helm@v4
+      - name: Add Helm Repositories
+        run: ./scripts/setup-helm-repos.sh
       - name: Login to GHCR
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

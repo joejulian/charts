@@ -7,6 +7,7 @@ OCI_REPO="oci://ghcr.io/${OWNER}/charts"
 DIST_DIR="${REPO_ROOT}/.dist"
 
 mkdir -p "${DIST_DIR}"
+"${REPO_ROOT}/scripts/setup-helm-repos.sh"
 
 release_chart() {
   local chart_dir="$1"
@@ -48,4 +49,3 @@ main() {
 }
 
 main "$@"
-

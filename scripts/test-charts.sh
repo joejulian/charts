@@ -2,6 +2,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+"${REPO_ROOT}/scripts/setup-helm-repos.sh"
 
 build_dependencies() {
   local chart_dir="$1"

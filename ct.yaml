@@ -2,8 +2,7 @@ chart-dirs:
   - charts
 check-version-increment: true
 helm-extra-args: --timeout 10m
-target-branch: master
+target-branch: main
 validate-chart-schema: false
 validate-maintainers: false
 validate-yaml: true
-

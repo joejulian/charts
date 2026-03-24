@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: azure/setup-helm@v4
+      - uses: azure/setup-helm@v5
       - name: Add Helm Repositories
         run: ./scripts/setup-helm-repos.sh
       - name: Login to GHCR

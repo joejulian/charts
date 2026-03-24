@@ -1,0 +1,15 @@
+persistence:
+  config:
+    enabled: false
+  media:
+    enabled: false
+
+priorityClass:
+  create: false
+
+tls:
+  existingSecret: ""
+
+service:
+  loadBalancer:
+    enabled: false

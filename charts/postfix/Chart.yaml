@@ -1,0 +1,14 @@
+apiVersion: v2
+name: postfix
+description: Postfix SMTP relay with optional saslauthd sidecar
+type: application
+version: 0.1.0
+# renovate: image=registry.gitlab.com/joejulian/container-postfix
+appVersion: "3.10.8"
+home: https://github.com/joejulian/charts/tree/master/charts/postfix
+maintainers:
+  - name: Joe Julian
+    email: me@joejulian.name
+sources:
+  - https://gitlab.com/joejulian/container-postfix
+  - https://gitlab.com/joejulian/container-saslauthd

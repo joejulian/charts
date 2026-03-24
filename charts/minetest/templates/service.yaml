@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "minetest.fullname" . }}
+  labels:
+    app: {{ template "minetest.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.externalPort }}
+      targetPort: {{ .Values.service.internalPort }}
+      protocol: UDP
+      name: {{ .Values.service.name }}
+  selector:
+    app: {{ template "minetest.name" . }}
+    release: {{ .Release.Name }}

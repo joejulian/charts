@@ -1,0 +1,15 @@
+apiVersion: v2
+name: openldap
+version: 0.0.1-0
+# renovate: image=registry.gitlab.com/joejulian/image-openldap
+appVersion: "latest"
+description: OpenLDAP chart
+keywords:
+- openldap
+home: https://github.com/joejulian/charts/tree/master/charts/openldap
+sources:
+- https://gitlab.com/joejulian/chart-openldap
+maintainers:
+- name: Joe Julian
+  email: me@joejulian.name
+type: application

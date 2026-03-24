@@ -1,0 +1,15 @@
+dependencies:
+- name: common
+  repository: https://bjw-s-labs.github.io/helm-charts/
+  version: 4.5.0
+- name: postgresql
+  repository: https://charts.bitnami.com/bitnami
+  version: 16.7.24
+- name: mariadb
+  repository: https://charts.bitnami.com/bitnami
+  version: 22.0.0
+- name: influxdb
+  repository: https://charts.bitnami.com/bitnami
+  version: 7.1.15
+digest: sha256:8235f1b42790a0237eaf1ca2eec82600976872ec4ea2d362333d9d8f72260ed5
+generated: "2025-12-26T13:56:48.50412112-08:00"

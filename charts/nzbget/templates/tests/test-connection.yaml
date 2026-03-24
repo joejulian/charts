@@ -1,0 +1,16 @@
+{{- if eq .Values.service.enabled true }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Release.Name }}-test-connection"
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ["sh", "-ec"]
+      args:
+        - wget -S -O /dev/null http://{{ .Release.Name }}-service:6789/ 2>&1 | grep -q '401 Unauthorized'
+  restartPolicy: Never
+{{- end }}

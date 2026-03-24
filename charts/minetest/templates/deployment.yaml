@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "minetest.fullname" . }}
+  labels:
+    app: {{ template "minetest.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "minetest.name" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "minetest.name" . }}
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+{{ toYaml .Values.command | indent 12 }}
+          volumeMounts:
+            - name: config-volume
+              mountPath: /config
+            - name: data
+              mountPath: /data
+          ports:
+            - name: dataport
+              containerPort: {{ .Values.service.internalPort }}
+              protocol: UDP
+          livenessProbe:
+            exec:
+              command:
+                - cat
+                - /proc/1/status
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+      volumes:
+        - name: config-volume
+          configMap:
+            name: {{ .Release.Name }}-conf
+        - name: data
+          persistentVolumeClaim:
+              claimName: {{ .Release.Name }}-data
+        - name: world-mt
+          configMap:
+            defaultMode: 438
+            name: world-mt
+    {{- if .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
+    {{- end }}

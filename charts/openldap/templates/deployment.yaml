@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "openldap.fullname" . }}
+  labels:
+    app: {{ template "openldap.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "openldap.name" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "openldap.name" . }}
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+{{ if not .Values.configfiles }}
+          args:
+            - -F
+            - /slapd.d/config
+{{ end }}
+          ports:
+            - containerPort: {{ .Values.service.internalPort }}
+          livenessProbe:
+            tcpSocket:
+              port: {{ .Values.service.internalPort }}
+          volumeMounts:
+            - name: data
+              mountPath: /slapd.d
+{{ if .Values.configfiles }}
+            - name: config
+              mountPath: /config
+{{ end }}
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ template "openldap.name" . }}
+{{ if .Values.configfiles }}
+        - name: config
+          configMap:
+            name: {{ template "openldap.name" . }}
+{{ end }}
+{{ if .Values.configdb.enabled }}
+        - name: initdata
+          secret:
+            name: {{ template "openldap.name" . }}
+{{ end }}
+    {{- if .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
+    {{- end }}

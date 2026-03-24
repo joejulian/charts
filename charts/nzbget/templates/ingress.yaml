@@ -1,0 +1,27 @@
+{{- if eq .Values.ingress.enabled true }}
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}-ingress
+  namespace: {{ .Release.Namespace }}
+  labels:
+    name: {{ .Release.Name }}-ingress
+    heritage: {{ .Release.Service | quote }}
+    release: {{ .Release.Name | quote }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    component: "{{ .Release.Name }}"
+  annotations:
+    "helm.sh/created": {{ .Release.Time.Seconds | quote }}
+spec:
+  rules:
+    - host: {{ .Values.ingress.host }}.{{ .Values.ingress.domain }}
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: {{ .Release.Name }}-service
+              servicePort: 4180
+  tls:
+{{ toYaml .Values.ingress.tls | indent 4 }}
+{{- end }}

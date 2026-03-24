@@ -1,0 +1,16 @@
+{{- if eq .Values.service.enabled true }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ template "fullname" . }}-test-connection"
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ["sh", "-ec"]
+      args:
+        - wget -qO- http://{{ template "fullname" . }}:{{ .Values.service.externalPort }}/ | grep -iq sonarr
+  restartPolicy: Never
+{{- end }}

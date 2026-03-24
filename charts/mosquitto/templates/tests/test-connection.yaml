@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "mosquitto.fullname" . }}-test-connection"
+  labels:
+    {{- include "mosquitto.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: tcp-check
+      image: busybox
+      command: ['sh', '-ec']
+      args:
+        - nc -z -w 5 {{ include "mosquitto.fullname" . }} {{ .Values.service.ports.mqtt.port }}
+  restartPolicy: Never

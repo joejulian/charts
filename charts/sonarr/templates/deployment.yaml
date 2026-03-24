@@ -1,0 +1,112 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ template "name" . }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 200Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "fullname" . }}
+  labels:
+    app: {{ template "name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "name" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "name" . }}
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: PUID
+              value: "{{ .Values.sonarr.uid }}"
+            - name: PGID
+              value: "{{ .Values.sonarr.gid }}"
+            - name: TZ
+              value: "{{ .Values.sonarr.tz }}"
+          ports:
+            - containerPort: {{ .Values.service.internalPort }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.service.internalPort }}
+            initialDelaySeconds: 600
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.service.internalPort }}
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+          volumeMounts:
+            - name: pv-mount
+              mountPath: /config
+{{- if .Values.sonarr.mediaVolume }}
+            - name: media-volume
+              mountPath: {{ .Values.sonarr.mediaPath }}
+{{- end }}
+{{- if eq .Values.oauth_proxy.enabled true }}
+        - name: {{ .Chart.Name }}-oauth-proxy
+          image:  {{ .Values.oauth_proxy.image}}:{{ .Values.oauth_proxy.version }}
+          imagePullPolicy: Always
+          args:
+            - -cookie-domain=.{{ .Values.ingress.domain }}
+            - -upstream=http://localhost:{{ .Values.service.internalPort }}/
+            - -provider={{ .Values.oauth_proxy.provider }}
+{{- if .Values.oauth_proxy.gitlab_url }}
+            - -login-url={{ .Values.oauth_proxy.gitlab_url }}/oauth/authorize
+            - -redeem-url={{ .Values.oauth_proxy.gitlab_url }}/oauth/token
+            - -validate-url={{ .Values.oauth_proxy.gitlab_url }}/api/v3/user
+{{- end }}
+            - -cookie-name={{ .Release.Name }}_oauth2_proxy
+            - -cookie-secret={{ .Values.oauth_proxy.cookieSecret }}
+            - -cookie-secure=true
+            - -cookie-expire={{ .Values.oauth_proxy.cookieExpire }}
+            - -cookie-refresh={{ .Values.oauth_proxy.cookieRefresh }}
+  {{- range .Values.oauth_proxy.authorizedDomains }}
+            - -email-domain={{ . }}
+  {{- end }}
+            - -request-logging=true
+            - -http-address=0.0.0.0:4180
+          env:
+            - name: OAUTH2_PROXY_CLIENT_ID
+              value: {{ .Values.oauth_proxy.clientId }}
+            - name: OAUTH2_PROXY_CLIENT_SECRET
+              value: {{ .Values.oauth_proxy.clientSecret }}
+          livenessProbe:
+            httpGet:
+              path: /oauth2/sign_in
+              port: 4180
+          readinessProbe:
+            httpGet:
+              path: /oauth2/sign_in
+              port: 4180
+          ports:
+            - containerPort: 4180
+{{- end }}
+      volumes:
+        - name: pv-mount
+          persistentVolumeClaim:
+            claimName: {{ template "name" . }}
+{{- if .Values.sonarr.mediaVolume }}
+{{ toYaml .Values.sonarr.mediaVolume | indent 8 }}
+{{- end }}
+    {{- if .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
+    {{- end }}

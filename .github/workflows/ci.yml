@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - main
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: azure/setup-helm@v4
+      - uses: helm/chart-testing-action@v2.7.0
+      - name: Lint Charts
+        run: ct lint --config ct.yaml --all
+
+  install-upgrade-e2e:
+    runs-on: ubuntu-latest
+    needs: lint
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - uses: helm/kind-action@v1.12.0
+        with:
+          config: kind-config.yaml
+      - name: Make Scripts Executable
+        run: chmod +x scripts/*.sh
+      - name: Test Charts
+        env:
+          ONSTAR2MQTT_TEST_SECRET: ${{ secrets.ONSTAR2MQTT_TEST_SECRET }}
+        run: ./scripts/test-charts.sh
+      - name: Dump Cluster State
+        if: failure()
+        run: |
+          kubectl get pods -A -o wide || true
+          kubectl get events -A --sort-by=.lastTimestamp | tail -n 200 || true
+

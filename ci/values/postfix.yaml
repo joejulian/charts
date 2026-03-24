@@ -1,0 +1,6 @@
+replicaCount: 1
+saslauthd:
+  enabled: false
+tls:
+  enabled: false
+

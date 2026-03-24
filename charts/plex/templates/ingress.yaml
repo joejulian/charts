@@ -1,0 +1,32 @@
+{{- range .Values.ingresses }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .name }}
+  labels:
+    {{- include "plex.labels" $ | nindent 4 }}
+  {{- with .annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  rules:
+    - host: {{ .host }}
+      http:
+        paths:
+          - path: {{ .path | default "/" }}
+            pathType: {{ .pathType | default "Prefix" }}
+            backend:
+              service:
+                name: {{ include "plex.fullname" $ }}
+                port:
+                  number: 32400
+  {{- with .tlsSecretName }}
+  tls:
+    - secretName: {{ . }}
+  {{- end }}
+{{- end }}

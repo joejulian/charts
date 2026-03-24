@@ -1,0 +1,24 @@
+{{- if .Values.certificate.enabled }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Values.certificate.name }}
+  labels:
+    {{- include "plex.labels" . | nindent 4 }}
+spec:
+  secretName: {{ .Values.certificate.secretName }}
+  issuerRef:
+    kind: {{ .Values.certificate.issuerRef.kind }}
+    name: {{ .Values.certificate.issuerRef.name }}
+  dnsNames:
+    {{- toYaml .Values.certificate.dnsNames | nindent 4 }}
+  {{- if .Values.certificate.keystores.pkcs12.enabled }}
+  keystores:
+    pkcs12:
+      create: true
+      profile: {{ .Values.certificate.keystores.pkcs12.profile }}
+      passwordSecretRef:
+        name: {{ .Values.certificate.keystores.pkcs12.passwordSecretRef.name }}
+        key: {{ .Values.certificate.keystores.pkcs12.passwordSecretRef.key }}
+  {{- end }}
+{{- end }}

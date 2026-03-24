@@ -1,0 +1,79 @@
+{{- if .Values.service.main.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "plex.fullname" . }}
+  labels:
+    {{- include "plex.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.main.type }}
+  selector:
+    {{- include "plex.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: plex
+      port: 32400
+      targetPort: plex
+    - name: plex-dlna
+      port: 32469
+      targetPort: dlna
+    - name: plex-gdm-1
+      protocol: UDP
+      port: 32410
+      targetPort: 32410
+    - name: plex-gdm-2
+      protocol: UDP
+      port: 32412
+      targetPort: 32412
+    - name: plex-gdm-3
+      protocol: UDP
+      port: 32413
+      targetPort: 32413
+    - name: plex-gdm-4
+      protocol: UDP
+      port: 32414
+      targetPort: 32414
+{{- end }}
+{{- if .Values.service.loadBalancer.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "plex.fullname" . }}-lb
+  labels:
+    {{- include "plex.labels" . | nindent 4 }}
+  {{- with .Values.service.loadBalancer.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: LoadBalancer
+  {{- with .Values.service.loadBalancer.loadBalancerIP }}
+  loadBalancerIP: {{ . }}
+  {{- end }}
+  externalTrafficPolicy: {{ .Values.service.loadBalancer.externalTrafficPolicy }}
+  selector:
+    {{- include "plex.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: plex
+      port: 32400
+      targetPort: plex
+    - name: plex-dlna
+      port: 32469
+      targetPort: dlna
+    - name: gdm-32410
+      protocol: UDP
+      port: 32410
+      targetPort: 32410
+    - name: gdm-32412
+      protocol: UDP
+      port: 32412
+      targetPort: 32412
+    - name: gdm-32413
+      protocol: UDP
+      port: 32413
+      targetPort: 32413
+    - name: gdm-32414
+      protocol: UDP
+      port: 32414
+      targetPort: 32414
+{{- end }}

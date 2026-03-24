@@ -1,0 +1,32 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - master
+      - main
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: azure/setup-helm@v4
+      - name: Login to GHCR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "${GITHUB_TOKEN}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - name: Make Scripts Executable
+        run: chmod +x scripts/*.sh
+      - name: Release Changed Charts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./scripts/release-charts.sh "${{ github.event.before }}" "${{ github.sha }}"
+      - name: Push Tags
+        run: git push --tags

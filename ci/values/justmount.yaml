@@ -1,0 +1,3 @@
+node:
+  updateStrategy: RollingUpdate
+

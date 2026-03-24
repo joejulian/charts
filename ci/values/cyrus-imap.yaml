@@ -1,0 +1,26 @@
+config:
+  imapdConf: |
+    configdirectory: /data/imap_db
+    duplicate_db_path: /ephemeral/deliver.db
+    tls_sessions_db_path: /ephemeral/tls_sessions.db
+    ptscache_db_path: /ephemeral/ptscache.db
+    statuscache_db_path: /ephemeral/statuscache.db
+    mboxname_lockpath: /ephemeral
+    idlesocket: /socket/idle
+    lmtpsocket: /socket/lmtp
+    notifysocket: /socket/notify
+    autocreate_post: 1
+    partition-default: /data/imap_spool
+    admins: cyrus
+    defaultdomain: example.com
+    servername: example.com
+    allowplaintext: true
+    sasl_pwcheck_method: auxprop
+    sasl_auxprop_plugin: sasldb
+    sendmail: /usr/sbin/sendmail
+    hashimapspool: false
+    sql_engine: sqlite
+
+persistence:
+  data:
+    enabled: false

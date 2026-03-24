@@ -1,0 +1,58 @@
+{{- if .Values.services.main.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cyrus-imap.fullname" . }}
+  labels:
+    {{- include "cyrus-imap.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.services.main.type }}
+  selector:
+    {{- include "cyrus-imap.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+    - name: imap
+      port: 143
+      targetPort: imap
+    - name: imaps
+      port: 993
+      targetPort: imaps
+    - name: lmtp
+      port: 2003
+      targetPort: lmtp
+    - name: sieve
+      port: 4190
+      targetPort: sieve
+{{- end }}
+{{- if .Values.services.loadBalancer.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cyrus-imap.fullname" . }}-lb
+  labels:
+    {{- include "cyrus-imap.labels" . | nindent 4 }}
+  {{- with .Values.services.loadBalancer.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.services.loadBalancer.type }}
+  {{- with .Values.services.loadBalancer.loadBalancerIP }}
+  loadBalancerIP: {{ . }}
+  {{- end }}
+  selector:
+    {{- include "cyrus-imap.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: imap
+      port: 143
+      targetPort: imap
+    - name: imaps
+      port: 993
+      targetPort: imaps
+    - name: lmtp
+      port: 2003
+      targetPort: lmtp
+{{- end }}

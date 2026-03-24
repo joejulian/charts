@@ -1,0 +1,147 @@
+replicaCount: 1
+
+image:
+  repository: registry.gitlab.com/joejulian/container-cyrus-imap
+  pullPolicy: IfNotPresent
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: false
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+podSecurityContext: {}
+securityContext: {}
+resources: {}
+
+config:
+  cyrusConf: |
+    START {
+      recover      cmd="ctl_cyrusdb -C /config/imapd.conf -r"
+    }
+    SERVICES {
+      imap         cmd="imapd -C /config/imapd.conf" listen="imap" prefork=3
+      imaps        cmd="imapd -C /config/imapd.conf -s" listen="imaps" prefork=3
+      sieve        cmd="timsieved -C /config/imapd.conf" listen="sieve" prefork=1
+      http         cmd="httpd -C /config/imapd.conf" listen="http" prefork=0
+      https        cmd="httpd -C /config/imapd.conf -s" listen="https" prefork=0
+      lmtp         cmd="lmtpd -C /config/imapd.conf -a" listen="lmtp" prefork=1
+    }
+    EVENTS {
+      checkpoint   cmd="ctl_cyrusdb -C /config/imapd.conf -c" period=30
+      delprune     cmd="cyr_expire -C /config/imapd.conf -E 3" at=0400
+      deleteprune  cmd="cyr_expire -C /config/imapd.conf -E 4 -D 28" at=0430
+      expungeprune cmd="cyr_expire -C /config/imapd.conf -E 4 -X 28" at=0445
+      tlsprune     cmd="tls_prune -C /config/imapd.conf" at=0400
+      squat        cmd="squatter -C /config/imapd.conf" period=1440
+    }
+    DAEMON {
+      idled        cmd="idled -C /config/imapd.conf"
+    }
+  imapdConf: |
+    configdirectory: /data/imap_db
+    duplicate_db_path: /ephemeral/deliver.db
+    tls_sessions_db_path: /ephemeral/tls_sessions.db
+    ptscache_db_path: /ephemeral/ptscache.db
+    statuscache_db_path: /ephemeral/statuscache.db
+    mboxname_lockpath: /ephemeral
+    idlesocket: /socket/idle
+    lmtpsocket: /socket/lmtp
+    notifysocket: /socket/notify
+    autocreate_post: 1
+    altnamespace: 0
+    autocreate_quota: -1
+    partition-default: /data/imap_spool
+    admins: cyrus
+    defaultdomain: example.com
+    servername: example.com
+    lmtp_downcase_rcpt: 1
+    sievedir: /data/imap_sieve
+    allowplaintext: true
+    sasl_pwcheck_method: auxprop
+    sasl_auxprop_plugin: sasldb
+    sendmail: /usr/sbin/sendmail
+    hashimapspool: false
+    sql_engine: sqlite
+
+mainContainer:
+  command:
+    - fsyslog
+  args:
+    - -command
+    - /usr/lib/cyrus/master -C /config/imapd.conf -M /config/cyrus.conf
+
+initContainer:
+  enabled: true
+  image: ghcr.io/containerd/busybox:1.36
+  command:
+    - sh
+    - -c
+    - |
+      mkdir -p /data/imap_db /data/imap_db/socket /data/imap_sieve /data/imap_spool /socket /ephemeral
+      chown -R 70:12 /data /socket /ephemeral
+
+saslauthd:
+  enabled: false
+  image:
+    repository: registry.gitlab.com/joejulian/container-saslauthd
+    pullPolicy: IfNotPresent
+    tag: latest
+  command:
+    - fsyslog
+  args:
+    - -command
+    - saslauthd -d -O /config/saslauthd.conf -a ldap -m /socket
+  existingConfigSecret: ""
+  inlineConfig: ""
+
+tls:
+  enabled: false
+  existingSecret: ""
+
+certificate:
+  enabled: false
+  secretName: ""
+  issuerRef:
+    kind: ClusterIssuer
+    name: ""
+  dnsNames: []
+  duration: 90d
+
+persistence:
+  data:
+    enabled: true
+    existingClaim: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 3Gi
+
+services:
+  main:
+    enabled: true
+    type: ClusterIP
+  loadBalancer:
+    enabled: false
+    type: LoadBalancer
+    annotations: {}
+    loadBalancerIP: ""
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  host: ""
+  path: /
+  pathType: Prefix
+  tls:
+    enabled: false
+    secretName: ""
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

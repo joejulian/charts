@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "cyrus-imap.fullname" . }}-test-connection"
+  labels:
+    {{- include "cyrus-imap.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  containers:
+    - name: imap
+      image: bash:5.2.37
+      command: ["bash", "-ec"]
+      args:
+        - |
+          exec 3<>/dev/tcp/{{ include "cyrus-imap.fullname" . }}/143
+          printf 'a1 LOGOUT\r\n' >&3
+          cat <&3 | grep -qi 'OK'
+  restartPolicy: Never

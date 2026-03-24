@@ -1,0 +1,154 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cyrus-imap.fullname" . }}
+  labels:
+    {{- include "cyrus-imap.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "cyrus-imap.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "cyrus-imap.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "cyrus-imap.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.initContainer.enabled }}
+      initContainers:
+        - name: init
+          image: {{ .Values.initContainer.image }}
+          command:
+            {{- toYaml .Values.initContainer.command | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: socket
+              mountPath: /socket
+      {{- end }}
+      containers:
+        - name: cyrus-imap
+          image: "{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            {{- toYaml .Values.mainContainer.command | nindent 12 }}
+          {{- with .Values.mainContainer.args }}
+          args:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 80
+            - name: https
+              containerPort: 443
+            - name: imap
+              containerPort: 143
+            - name: imaps
+              containerPort: 993
+            - name: lmtp
+              containerPort: 2003
+            - name: sieve
+              containerPort: 4190
+          livenessProbe:
+            tcpSocket:
+              port: imap
+            initialDelaySeconds: 90
+            periodSeconds: 10
+          readinessProbe:
+            tcpSocket:
+              port: imap
+            initialDelaySeconds: 60
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: data
+              mountPath: /data
+            - name: socket
+              mountPath: /socket
+            - name: ephemeral
+              mountPath: /ephemeral
+            - name: ephemeral-db
+              mountPath: /data/imap_db/socket
+            {{- if .Values.tls.enabled }}
+            - name: tls
+              mountPath: /tls
+            {{- end }}
+        {{- if .Values.saslauthd.enabled }}
+        - name: saslauthd
+          image: "{{ .Values.saslauthd.image.repository }}:{{ .Values.saslauthd.image.tag }}"
+          imagePullPolicy: {{ .Values.saslauthd.image.pullPolicy }}
+          command:
+            {{- toYaml .Values.saslauthd.command | nindent 12 }}
+          {{- with .Values.saslauthd.args }}
+          args:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: socket
+              mountPath: /socket
+            - name: saslauthd-config
+              mountPath: /config
+        {{- end }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "cyrus-imap.fullname" . }}
+        - name: data
+          {{- if .Values.persistence.data.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ default (printf "%s-data" (include "cyrus-imap.fullname" .)) .Values.persistence.data.existingClaim }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: socket
+          emptyDir: {}
+        - name: ephemeral
+          emptyDir: {}
+        - name: ephemeral-db
+          emptyDir: {}
+        {{- if .Values.saslauthd.enabled }}
+        - name: saslauthd-config
+          {{- if .Values.saslauthd.existingConfigSecret }}
+          secret:
+            secretName: {{ .Values.saslauthd.existingConfigSecret }}
+          {{- else }}
+          secret:
+            secretName: {{ include "cyrus-imap.fullname" . }}-saslauthd
+          {{- end }}
+        {{- end }}
+        {{- if .Values.tls.enabled }}
+        - name: tls
+          secret:
+            secretName: {{ default .Values.certificate.secretName .Values.tls.existingSecret }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -1,4 +1,5 @@
 {{- range .Values.ingresses }}
+{{- $ingress := . }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -25,8 +26,10 @@ spec:
                 name: {{ include "plex.fullname" $ }}
                 port:
                   number: 32400
-  {{- with .tlsSecretName }}
+  {{- with $ingress.tlsSecretName }}
   tls:
     - secretName: {{ . }}
+      hosts:
+        - {{ $ingress.host }}
   {{- end }}
 {{- end }}

@@ -1,0 +1,9 @@
+args:
+  - --source=service
+  - --source=ingress
+  - --provider=pdns
+  - --pdns-server=http://127.0.0.1:8081
+  - --pdns-api-key=dummy
+  - --txt-owner-id=ci
+  - --domain-filter=example.com
+  - --interval=30s

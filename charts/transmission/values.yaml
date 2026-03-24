@@ -1,0 +1,76 @@
+replicaCount: 1
+
+image:
+  repository: linuxserver/transmission
+  pullPolicy: IfNotPresent
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+podAnnotations: {}
+podLabels: {}
+resources: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+securityContext: {}
+
+service:
+  type: ClusterIP
+  port: 9091
+  nodePort: null
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  host: ""
+  path: /
+  pathType: Prefix
+  tls:
+    enabled: false
+    secretName: ""
+
+settings:
+  enabled: false
+  json: |
+    {
+      "rpc-whitelist": "*.*.*.*",
+      "umask": 0
+    }
+
+env:
+  - name: PUID
+    value: "1000"
+  - name: PGID
+    value: "1000"
+
+secretEnv: []
+extraEnv: []
+
+vpn:
+  enabled: false
+  hostTun:
+    enabled: false
+    path: /dev/net/tun
+  capabilities:
+    - NET_ADMIN
+
+persistence:
+  config:
+    enabled: false
+    existingClaim: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 100Mi
+  media:
+    enabled: false
+    existingClaim: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 1Gi
+
+extraVolumes: []
+extraVolumeMounts: []

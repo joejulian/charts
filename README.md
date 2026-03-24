@@ -18,7 +18,9 @@ Consolidated Helm chart monorepo for the charts maintained under the `joejulian`
 
 - GitHub Actions lint every chart and run install, upgrade, and `helm test` smoke coverage in a kind cluster.
 - Releases package changed charts, push them to `oci://ghcr.io/joejulian/charts`, and create per-chart git tags plus GitHub releases.
-- Renovate runs on a schedule in GitHub Actions, tracks chart image sources, and updates `appVersion` automatically. Safe dependency updates can automerge after CI.
+- Renovate runs on a schedule in GitHub Actions, tracks chart image sources, updates `appVersion`, and runs `scripts/bump-chart.sh` so chart version bumps happen in the same PR before CI runs.
+- CI verifies that any `appVersion` change includes an appropriate chart version bump.
+- If the `RENOVATE_TOKEN` actor is allowed to merge, safe dependency updates can automerge after CI. Otherwise the PR remains manual.
 - Dependabot keeps GitHub Actions dependencies current.
 
 ## Local Usage

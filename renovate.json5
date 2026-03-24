@@ -32,5 +32,13 @@
       datasourceTemplate: "docker",
     },
   ],
+  postUpgradeTasks: {
+    commands: [
+      "./scripts/bump-chart.sh",
+    ],
+    fileFilters: [
+      "charts/*/Chart.yaml",
+    ],
+    executionMode: "update",
+  },
 }
-

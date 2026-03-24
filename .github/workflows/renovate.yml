@@ -20,3 +20,5 @@ jobs:
         with:
           configurationFile: renovate.json5
           token: ${{ secrets.RENOVATE_TOKEN }}
+        env:
+          RENOVATE_ALLOWED_COMMANDS: '["^\\./scripts/bump-chart\\.sh$"]'

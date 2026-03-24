@@ -3,6 +3,13 @@
 # Declare variables to be passed into your templates.
 minetest:
   config: ""
+world:
+  existingSecret: ""
+  secretKey: world.mt
+mods:
+  installmods: ""
+persistence:
+  existingClaim: ""
 replicaCount: 1
 image:
   repository: jwh1981/minetest

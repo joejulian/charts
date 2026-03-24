@@ -1,0 +1,14 @@
+{{- if .Values.mods.installmods }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-mods
+  labels:
+    heritage: {{ .Release.Service | quote }}
+    release: {{ .Release.Name | quote }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    component: "{{ .Release.Name }}"
+data:
+  installmods.txt: |
+{{ .Values.mods.installmods | indent 4 }}
+{{- end }}

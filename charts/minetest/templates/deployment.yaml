@@ -9,6 +9,8 @@ metadata:
     heritage: {{ .Release.Service }}
 spec:
   replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: {{ template "minetest.name" . }}
@@ -19,6 +21,30 @@ spec:
         app: {{ template "minetest.name" . }}
         release: {{ .Release.Name }}
     spec:
+      initContainers:
+        - name: {{ .Chart.Name }}-mods
+          image: alpine:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -e
+            - -o
+            - pipefail
+            - -c
+            - |
+              [ ! -d /data/worldmods ] || rm -rf /data/worldmods
+              while read mod url; do
+                [ -n "${mod}" ] || continue
+                echo "Installing from ${mod}"
+                mkdir -p "/data/worldmods/${mod}"
+                wget -O - -q "${url}" | tar -C "/data/worldmods/${mod}" --strip-components=1 -xz
+              done < /config/installmods.txt
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: mods
+              mountPath: /config/installmods.txt
+              subPath: installmods.txt
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}"
@@ -30,6 +56,9 @@ spec:
               mountPath: /config
             - name: data
               mountPath: /data
+            - name: world-mt
+              mountPath: /data/world.mt
+              subPath: {{ .Values.world.secretKey }}
           ports:
             - name: dataport
               containerPort: {{ .Values.service.internalPort }}
@@ -47,11 +76,14 @@ spec:
             name: {{ .Release.Name }}-conf
         - name: data
           persistentVolumeClaim:
-              claimName: {{ .Release.Name }}-data
+              claimName: {{ default (printf "%s-data" .Release.Name) .Values.persistence.existingClaim }}
         - name: world-mt
+          secret:
+            secretName: {{ .Values.world.existingSecret }}
+        - name: mods
           configMap:
-            defaultMode: 438
-            name: world-mt
+            defaultMode: 420
+            name: {{ .Release.Name }}-mods
     {{- if .Values.nodeSelector }}
       nodeSelector:
 {{ toYaml .Values.nodeSelector | indent 8 }}

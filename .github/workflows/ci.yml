@@ -33,7 +33,7 @@ jobs:
             base_ref="${PUSH_BEFORE_SHA}"
           fi
           bash ./scripts/check-chart-version-bumps.sh "${base_ref}" HEAD
-      - uses: helm/chart-testing-action@v2.7.0
+      - uses: helm/chart-testing-action@v2.8.0
       - name: Lint Charts
         run: ct lint --config ct.yaml --all
 

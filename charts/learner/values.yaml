@@ -5,6 +5,7 @@ image:
 
 nameOverride: ""
 fullnameOverride: ""
+containerName: ""
 
 schedule: "*/15 * * * *"
 activeDeadlineSeconds: 720

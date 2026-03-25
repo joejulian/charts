@@ -16,7 +16,7 @@ spec:
             {{- include "learner.selectorLabels" . | nindent 12 }}
         spec:
           containers:
-            - name: {{ include "learner.name" . }}
+            - name: {{ default (include "learner.name" .) .Values.containerName }}
               image: "{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}"
               imagePullPolicy: {{ .Values.image.pullPolicy }}
               env:

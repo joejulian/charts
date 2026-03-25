@@ -2,7 +2,7 @@ apiVersion: v2
 name: rspamd
 description: Rspamd deployment with configurable local and override configuration
 type: application
-version: 0.1.1
+version: 0.1.2
 # renovate: image=registry.gitlab.com/joejulian/container-rspamd
 appVersion: "latest"
 home: https://github.com/joejulian/charts/tree/main/charts/rspamd

@@ -39,13 +39,33 @@ spec:
             - name: fuzzy
               containerPort: 11335
           livenessProbe:
+            {{- if eq .Values.probes.liveness.type "httpGet" }}
+            httpGet:
+              path: {{ .Values.probes.liveness.path }}
+              port: controller
+              {{- with .Values.probes.liveness.httpHeaders }}
+              httpHeaders:
+                {{- toYaml . | nindent 16 }}
+              {{- end }}
+            {{- else }}
             tcpSocket:
               port: controller
-            initialDelaySeconds: 60
+            {{- end }}
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
           readinessProbe:
+            {{- if eq .Values.probes.readiness.type "httpGet" }}
+            httpGet:
+              path: {{ .Values.probes.readiness.path }}
+              port: controller
+              {{- with .Values.probes.readiness.httpHeaders }}
+              httpHeaders:
+                {{- toYaml . | nindent 16 }}
+              {{- end }}
+            {{- else }}
             tcpSocket:
               port: controller
-            initialDelaySeconds: 60
+            {{- end }}
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:

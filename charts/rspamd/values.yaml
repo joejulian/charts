@@ -16,6 +16,18 @@ nodeSelector: {}
 tolerations: []
 affinity: {}
 
+probes:
+  liveness:
+    type: tcpSocket
+    path: /healthy
+    initialDelaySeconds: 60
+    httpHeaders: []
+  readiness:
+    type: tcpSocket
+    path: /ready
+    initialDelaySeconds: 60
+    httpHeaders: []
+
 config:
   local:
     actions.conf: |

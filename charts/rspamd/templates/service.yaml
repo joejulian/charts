@@ -26,11 +26,11 @@ spec:
   type: {{ .Values.services.controller.type }}
   selector:
     {{- include "rspamd.selectorLabels" . | nindent 4 }}
-  {{- with .Values.services.controller.nodePort }}
-  nodePort: {{ . }}
-  {{- end }}
   ports:
     - name: controller
       port: {{ .Values.services.controller.port }}
       targetPort: controller
+      {{- with .Values.services.controller.nodePort }}
+      nodePort: {{ . }}
+      {{- end }}
 {{- end }}

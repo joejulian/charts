@@ -105,6 +105,7 @@ spec:
       volumes:
         - name: postfix-config
           {{- if .Values.config.existingConfigSecret }}
+          configMap: null
           secret:
             secretName: {{ .Values.config.existingConfigSecret }}
           {{- else }}

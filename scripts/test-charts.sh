@@ -39,6 +39,20 @@ setup_chart_fixtures() {
   esac
 }
 
+setup_image_pull_secret() {
+  local namespace="$1"
+
+  if [[ -z "${GHCR_PULL_USERNAME:-}" || -z "${GHCR_PULL_PASSWORD:-}" ]]; then
+    return
+  fi
+
+  kubectl -n "${namespace}" create secret docker-registry ghcr-auth \
+    --docker-server=ghcr.io \
+    --docker-username="${GHCR_PULL_USERNAME}" \
+    --docker-password="${GHCR_PULL_PASSWORD}" \
+    --dry-run=client -o yaml | kubectl apply -f -
+}
+
 test_chart() {
   local chart_dir="$1"
   local chart_name
@@ -62,6 +76,7 @@ test_chart() {
 
   build_dependencies "${chart_dir}"
   kubectl get namespace "${namespace}" >/dev/null 2>&1 || kubectl create namespace "${namespace}"
+  setup_image_pull_secret "${namespace}"
   setup_chart_fixtures "${chart_name}" "${namespace}"
 
   helm "${helm_args[@]}"

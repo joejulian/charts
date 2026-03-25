@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ template "openldap.fullname" . }}
+  name: {{ default (include "openldap.fullname" .) .Values.deploymentName }}
   labels:
     app: {{ template "openldap.name" . }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
@@ -11,22 +11,36 @@ spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
+      {{- if .Values.selectorLabels }}
+{{ toYaml .Values.selectorLabels | indent 6 }}
+      {{- else }}
       app: {{ template "openldap.name" . }}
       release: {{ .Release.Name }}
+      {{- end }}
   template:
     metadata:
       labels:
+        {{- if .Values.selectorLabels }}
+{{ toYaml .Values.selectorLabels | indent 8 }}
+        {{- else }}
         app: {{ template "openldap.name" . }}
         release: {{ .Release.Name }}
+        {{- end }}
+        {{- if .Values.podLabels }}
+{{ toYaml .Values.podLabels | indent 8 }}
+        {{- end }}
     spec:
       containers:
-        - name: {{ .Chart.Name }}
+        - name: {{ .Values.containerName }}
           image: "{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-{{ if not .Values.configfiles }}
+{{ if .Values.args }}
+          args:
+{{ toYaml .Values.args | indent 12 }}
+{{ else if not .Values.configfiles }}
           args:
             - -F
-            - /slapd.d/config
+            - {{ .Values.dataMountPath }}/config
 {{ end }}
           ports:
             - containerPort: {{ .Values.service.internalPort }}
@@ -35,7 +49,7 @@ spec:
               port: {{ .Values.service.internalPort }}
           volumeMounts:
             - name: data
-              mountPath: /slapd.d
+              mountPath: {{ .Values.dataMountPath }}
 {{ if .Values.configfiles }}
             - name: config
               mountPath: /config
@@ -45,7 +59,7 @@ spec:
       volumes:
         - name: data
           persistentVolumeClaim:
-            claimName: {{ template "openldap.name" . }}
+            claimName: {{ default (include "openldap.name" .) .Values.persistence.existingClaim }}
 {{ if .Values.configfiles }}
         - name: config
           configMap:

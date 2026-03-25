@@ -2,15 +2,24 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 replicaCount: 1
+fullnameOverride: ""
+selectorLabels: {}
+podLabels: {}
+deploymentName: ""
+containerName: openldap
+args: []
+dataMountPath: /slapd.d
 image:
   repository: registry.gitlab.com/joejulian/image-openldap
   tag: ""
   pullPolicy: Always
 service:
-  name: nginx
+  resourceName: ""
+  name: ldap
   type: ClusterIP
   externalPort: 389
   internalPort: 10389
+  nodePort: null
 ingress:
   enabled: false
   # Used to create an Ingress record.
@@ -39,6 +48,11 @@ configfiles:
 configdb:
   enabled: false
   data: {}
+
+persistence:
+  enabled: true
+  existingClaim: ""
+  size: 3Gi
 
 nodeSelector: {}
 

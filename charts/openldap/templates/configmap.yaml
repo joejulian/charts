@@ -1,6 +1,8 @@
+{{- if .Values.configfiles }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ template "openldap.name" . }}
 data:
 {{ toYaml .Values.configfiles | indent 2 }}
+{{- end }}

@@ -54,7 +54,7 @@ spec:
       args:
         - rollout
         - status
-        - deployment/{{ template "openldap.fullname" . }}
+        - deployment/{{ default (include "openldap.fullname" .) .Values.deploymentName }}
         - -n
         - {{ .Release.Namespace }}
         - --timeout=180s

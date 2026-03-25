@@ -29,6 +29,10 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end -}}
 
 {{- define "rspamd.selectorLabels" -}}
+{{- if .Values.selectorLabels }}
+{{- toYaml .Values.selectorLabels -}}
+{{- else -}}
 app.kubernetes.io/name: {{ include "rspamd.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end -}}
 {{- end -}}

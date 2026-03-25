@@ -1,5 +1,5 @@
 image:
-  repository: registry.gitlab.com/joejulian/container-learnspam
+  repository: ghcr.io/joejulian/container-images/learnspam
   pullPolicy: IfNotPresent
   tag: ""
 

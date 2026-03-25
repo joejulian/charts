@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: linuxserver/transmission
+  repository: ghcr.io/joejulian/container-images/transmission
   pullPolicy: IfNotPresent
   tag: ""
 

@@ -1,14 +1,14 @@
 apiVersion: v2
 name: nzbget
 description: An nzbget chart for Kubernetes
-version: 0.0.6
-# renovate: image=registry.gitlab.com/joejulian/nzbget-docker
+version: 0.0.7
+# renovate: image=ghcr.io/joejulian/container-images/nzbget
 appVersion: "latest"
 keywords:
   - nzbget
 home: https://github.com/joejulian/charts/tree/master/charts/nzbget
 sources:
-  - https://gitlab.com/joejulian/nzbget-docker
+  - https://github.com/joejulian/container-images
   - https://github.com/nzbget
 maintainers:
   - name: Joe Julian

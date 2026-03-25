@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: registry.k8s.io/external-dns/external-dns
+  repository: ghcr.io/joejulian/container-images/external-dns
   pullPolicy: IfNotPresent
   tag: ""
 

@@ -5,7 +5,7 @@
 replicaCount: 1
 
 image:
-  repository: michaelwoods/onstar2mqtt
+  repository: ghcr.io/joejulian/container-images/onstar2mqtt
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: "1.5"

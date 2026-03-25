@@ -21,6 +21,7 @@ spec:
         app: {{ template "minetest.name" . }}
         release: {{ .Release.Name }}
     spec:
+{{- if .Values.mods.installmods }}
       initContainers:
         - name: {{ .Chart.Name }}-mods
           image: alpine:latest
@@ -45,6 +46,7 @@ spec:
             - name: mods
               mountPath: /config/installmods.txt
               subPath: installmods.txt
+{{- end }}
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}"
@@ -56,9 +58,11 @@ spec:
               mountPath: /config
             - name: data
               mountPath: /data
+{{- if .Values.world.existingSecret }}
             - name: world-secret
               mountPath: /data/world.mt
               subPath: {{ .Values.world.secretKey }}
+{{- end }}
           ports:
             - name: dataport
               containerPort: {{ .Values.service.internalPort }}
@@ -77,13 +81,17 @@ spec:
         - name: data
           persistentVolumeClaim:
               claimName: {{ default (printf "%s-data" .Release.Name) .Values.persistence.existingClaim }}
+{{- if .Values.world.existingSecret }}
         - name: world-secret
           secret:
             secretName: {{ .Values.world.existingSecret }}
+{{- end }}
+{{- if .Values.mods.installmods }}
         - name: mods
           configMap:
             defaultMode: 420
             name: {{ .Release.Name }}-mods
+{{- end }}
     {{- if .Values.nodeSelector }}
       nodeSelector:
 {{ toYaml .Values.nodeSelector | indent 8 }}

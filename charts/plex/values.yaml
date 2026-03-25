@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: registry.gitlab.com/joejulian/container-plex-media-server-plexpass
+  repository: ghcr.io/joejulian/container-images/plex-media-server-plexpass
   pullPolicy: IfNotPresent
   tag: ""
 

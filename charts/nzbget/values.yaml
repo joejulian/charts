@@ -1,6 +1,6 @@
 ---
 replicas: 1
-image: registry.gitlab.com/joejulian/nzbget-docker
+image: ghcr.io/joejulian/container-images/nzbget
 version: ""
 
 oauth_proxy:

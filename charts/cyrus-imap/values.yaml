@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: registry.gitlab.com/joejulian/container-cyrus-imap
+  repository: ghcr.io/joejulian/container-images/cyrus-imap
   pullPolicy: IfNotPresent
   tag: ""
 
@@ -90,9 +90,10 @@ initContainer:
 saslauthd:
   enabled: false
   image:
-    repository: registry.gitlab.com/joejulian/container-saslauthd
+    repository: ghcr.io/joejulian/container-images/saslauthd
     pullPolicy: IfNotPresent
-    tag: latest
+    # renovate: image=ghcr.io/joejulian/container-images/saslauthd
+    tag: 2.1.28-4
   command:
     - fsyslog
   args:

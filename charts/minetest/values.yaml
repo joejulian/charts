@@ -15,6 +15,12 @@ image:
   repository: jwh1981/minetest
   tag: ""
   pullPolicy: IfNotPresent
+initContainer:
+  image:
+    repository: alpine
+    # renovate: image=alpine
+    tag: 3.23.3
+    pullPolicy: IfNotPresent
 
 command:
   - /usr/games/minetest

@@ -23,8 +23,8 @@ spec:
     spec:
       initContainers:
         - name: {{ .Chart.Name }}-mods
-          image: alpine:latest
-          imagePullPolicy: IfNotPresent
+          image: "{{ .Values.initContainer.image.repository }}:{{ .Values.initContainer.image.tag }}"
+          imagePullPolicy: {{ .Values.initContainer.image.pullPolicy }}
           command:
             - sh
             - -e

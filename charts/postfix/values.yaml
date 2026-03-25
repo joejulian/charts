@@ -5,15 +5,16 @@
 replicaCount: 1
 
 image:
-  repository: registry.gitlab.com/joejulian/container-postfix
+  repository: ghcr.io/joejulian/container-images/postfix
   pullPolicy: IfNotPresent
   tag: ""
 
 saslauthd:
   enabled: true
   image:
-    repository: registry.gitlab.com/joejulian/container-saslauthd
-    tag: latest
+    repository: ghcr.io/joejulian/container-images/saslauthd
+    # renovate: image=ghcr.io/joejulian/container-images/saslauthd
+    tag: 2.1.28-4
     pullPolicy: IfNotPresent
 
 imagePullSecrets: []

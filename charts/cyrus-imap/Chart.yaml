@@ -2,13 +2,12 @@ apiVersion: v2
 name: cyrus-imap
 description: Cyrus IMAP server with optional saslauthd sidecar and TLS assets
 type: application
-version: 0.1.2
-# renovate: image=registry.gitlab.com/joejulian/container-cyrus-imap
+version: 0.1.3
+# renovate: image=ghcr.io/joejulian/container-images/cyrus-imap
 appVersion: "3.12.1"
 home: https://github.com/joejulian/charts/tree/main/charts/cyrus-imap
 maintainers:
   - name: Joe Julian
     email: me@joejulian.name
 sources:
-  - https://gitlab.com/joejulian/container-cyrus-imap
-  - https://gitlab.com/joejulian/container-saslauthd
+  - https://github.com/joejulian/container-images

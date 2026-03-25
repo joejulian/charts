@@ -29,8 +29,12 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end -}}
 
 {{- define "cyrus-imap.selectorLabels" -}}
+{{- if .Values.selectorLabels }}
+{{- toYaml .Values.selectorLabels -}}
+{{- else -}}
 app.kubernetes.io/name: {{ include "cyrus-imap.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end -}}
 {{- end -}}
 
 {{- define "cyrus-imap.serviceAccountName" -}}

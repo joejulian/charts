@@ -15,6 +15,7 @@ serviceAccount:
 
 podAnnotations: {}
 podLabels: {}
+selectorLabels: {}
 podSecurityContext: {}
 securityContext: {}
 resources: {}

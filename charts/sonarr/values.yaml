@@ -9,7 +9,7 @@ sonarr:
     hostPath:
       path: /tv
 image:
-  repository: ghcr.io/joejulian/container-images/sonarr
+  repository: linuxserver/sonarr
   tag: ""
   pullPolicy: Always
 resources:
@@ -22,7 +22,7 @@ resources:
 
 oauth_proxy:
   enabled: false
-  image: ghcr.io/joejulian/container-images/oauth2-proxy
+  image: quay.io/coreos/oauth2_proxy
   version: latest
   provider: gitlab
   # gitlab_url: ""

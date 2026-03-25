@@ -2,8 +2,8 @@ apiVersion: v2
 name: transmission
 description: Transmission deployment with optional VPN-oriented settings
 type: application
-version: 0.1.2
-# renovate: image=ghcr.io/joejulian/container-images/transmission
+version: 0.1.1
+# renovate: image=linuxserver/transmission
 appVersion: "latest"
 home: https://github.com/joejulian/charts/tree/main/charts/transmission
 maintainers:

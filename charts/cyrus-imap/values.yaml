@@ -79,7 +79,7 @@ mainContainer:
 
 initContainer:
   enabled: true
-  image: ghcr.io/joejulian/container-images/busybox:1.36
+  image: ghcr.io/containerd/busybox:1.36
   command:
     - sh
     - -c

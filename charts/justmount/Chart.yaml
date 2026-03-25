@@ -1,5 +1,5 @@
 apiVersion: v2
-# renovate: image=ghcr.io/joejulian/container-images/justmount
+# renovate: image=ghcr.io/joejulian/justmount
 appVersion: v0.2.9
 description: Node-only CSI driver for mounting existing filesystems
 home: https://github.com/joejulian/charts/tree/master/charts/justmount
@@ -10,4 +10,4 @@ name: justmount
 sources:
 - https://github.com/joejulian/csi-justmount
 type: application
-version: 0.2.10
+version: 0.2.9

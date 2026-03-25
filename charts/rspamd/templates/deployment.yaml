@@ -8,6 +8,9 @@ spec:
   replicas: {{ .Values.replicaCount }}
   strategy:
     type: {{ .Values.deploymentStrategy.type }}
+    {{- if eq .Values.deploymentStrategy.type "Recreate" }}
+    rollingUpdate: null
+    {{- end }}
   selector:
     matchLabels:
       {{- include "rspamd.selectorLabels" . | nindent 6 }}

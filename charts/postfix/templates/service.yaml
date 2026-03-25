@@ -22,10 +22,19 @@ spec:
     port: {{ .Values.service.ports.smtp.port }}
     protocol: {{ .Values.service.ports.smtp.protocol }}
     targetPort: {{ .Values.service.ports.smtp.targetPort }}
+    {{- with .Values.service.ports.smtp.nodePort }}
+    nodePort: {{ . }}
+    {{- end }}
   - name: submission
     port: {{ .Values.service.ports.submission.port }}
     protocol: {{ .Values.service.ports.submission.protocol }}
     targetPort: {{ .Values.service.ports.submission.targetPort }}
+    {{- with .Values.service.ports.submission.nodePort }}
+    nodePort: {{ . }}
+    {{- end }}
+  {{- with .Values.service.extraPorts }}
+  {{- toYaml . | nindent 2 }}
+  {{- end }}
   selector:
     {{- include "postfix.selectorLabels" . | nindent 4 }}
   sessionAffinity: None

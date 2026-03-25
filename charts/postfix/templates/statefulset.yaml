@@ -15,6 +15,9 @@ spec:
     metadata:
       labels:
         {{- include "postfix.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
       serviceAccountName: {{ include "postfix.serviceAccountName" . }}
       {{- with .Values.imagePullSecrets }}
@@ -35,7 +38,7 @@ spec:
                 - key: "app"
                   operator: In
                   values:
-                  - {{ include "postfix.name" . }}
+                  - {{ default (include "postfix.name" .) .Values.selectorLabels.app }}
             topologyKey: kubernetes.io/hostname
       containers:
         - name: postfix
@@ -101,8 +104,13 @@ spec:
         {{- end }}
       volumes:
         - name: postfix-config
+          {{- if .Values.config.existingConfigSecret }}
+          secret:
+            secretName: {{ .Values.config.existingConfigSecret }}
+          {{- else }}
           configMap:
             name: {{ .Values.config.existingConfigMap }}
+          {{- end }}
 {{- if .Values.tls.enabled }}
         - name: postfix-certs
           secret:

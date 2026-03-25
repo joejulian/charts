@@ -19,6 +19,8 @@ saslauthd:
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
+selectorLabels: {}
+podLabels: {}
 
 tls:
   enabled: false
@@ -61,13 +63,17 @@ service:
       port: 25
       targetPort: smtp
       protocol: TCP
+      nodePort: null
     submission:
       port: 587
       targetPort: submission
       protocol: TCP
+      nodePort: null
+  extraPorts: []
 
 config:
   existingConfigMap: postfix
+  existingConfigSecret: ""
   certificateSecretName: postfix-certificate
   saslSmtpdSecretName: sasl-smtpd
   saslauthdConfigSecretName: cyrus-imap-saslauthd-config

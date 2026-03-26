@@ -39,14 +39,15 @@ assert_cyrus_imap_ready() {
 
 run_chart_tests() {
   local chart_name="$1"
-  local namespace="$2"
+  local release_name="$2"
+  local namespace="$3"
 
   case "${chart_name}" in
     cyrus-imap)
       assert_cyrus_imap_ready "${namespace}"
       ;;
     *)
-      helm test "${chart_name}" -n "${namespace}" --timeout 5m
+      helm test "${release_name}" -n "${namespace}" --timeout 5m
       ;;
   esac
 }
@@ -113,11 +114,11 @@ test_chart() {
   helm "${helm_args[@]}"
   wait_for_workloads "${namespace}"
 
-  run_chart_tests "${chart_name}" "${namespace}"
+  run_chart_tests "${chart_name}" "${release_name}" "${namespace}"
 
   helm "${helm_args[@]}"
   wait_for_workloads "${namespace}"
-  run_chart_tests "${chart_name}" "${namespace}"
+  run_chart_tests "${chart_name}" "${release_name}" "${namespace}"
 }
 
 main() {

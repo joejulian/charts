@@ -89,11 +89,13 @@ test_chart() {
   local chart_dir="$1"
   local chart_name
   local namespace
+  local release_name
   local values_file
   local -a helm_args
 
   chart_name="$(basename "${chart_dir}")"
   namespace="ci-${chart_name}"
+  release_name="${chart_name}"
   values_file="${REPO_ROOT}/ci/values/${chart_name}.yaml"
   helm_args=(upgrade --install "${chart_name}" "${chart_dir}" -n "${namespace}" --create-namespace --wait --timeout 10m)
 

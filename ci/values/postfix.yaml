@@ -1,5 +1,11 @@
 replicaCount: 1
+image:
+  repository: registry.gitlab.com/joejulian/container-postfix
+  tag: latest
 saslauthd:
   enabled: false
+  image:
+    repository: registry.gitlab.com/joejulian/container-saslauthd
+    tag: latest
 tls:
   enabled: false

@@ -4,6 +4,10 @@ persistence:
   media:
     enabled: false
 
+image:
+  repository: registry.gitlab.com/joejulian/container-plex-media-server-plexpass
+  tag: latest
+
 priorityClass:
   create: false
 

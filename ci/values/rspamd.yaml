@@ -17,5 +17,8 @@ config:
     milter_headers.conf: |
       extended_spam_headers = true;
 
+imagePullSecrets:
+  - name: ghcr-auth
+
 persistence:
   enabled: false

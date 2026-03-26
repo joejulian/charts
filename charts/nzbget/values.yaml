@@ -1,12 +1,17 @@
 ---
 replicas: 1
-image: registry.gitlab.com/joejulian/nzbget-docker
-version: ""
+image:
+  repository: ghcr.io/joejulian/container-images/nzbget
+  tag: ""
+  pullPolicy: IfNotPresent
 
 oauth_proxy:
   enabled: false
-  image: quay.io/coreos/oauth2_proxy
-  version: latest
+  image:
+    repository: quay.io/oauth2-proxy/oauth2-proxy
+    # renovate: image=quay.io/oauth2-proxy/oauth2-proxy
+    tag: v7.15.1
+    pullPolicy: IfNotPresent
   provider: gitlab
   # gitlab_url: ""
   cookie_secret: changeme

@@ -7,6 +7,9 @@ persistence:
 priorityClass:
   create: false
 
+imagePullSecrets:
+  - name: ghcr-auth
+
 tls:
   existingSecret: ""
 

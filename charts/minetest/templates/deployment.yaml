@@ -21,8 +21,26 @@ spec:
         app: {{ template "minetest.name" . }}
         release: {{ .Release.Name }}
     spec:
-{{- if .Values.mods.installmods }}
       initContainers:
+        - name: {{ .Chart.Name }}-game
+          image: "{{ .Values.initContainer.image.repository }}:{{ .Values.initContainer.image.tag }}"
+          imagePullPolicy: {{ .Values.initContainer.image.pullPolicy }}
+          command:
+            - sh
+            - -e
+            - -o
+            - pipefail
+            - -c
+            - |
+              mkdir -p "/games"
+              if [ ! -d "/games/{{ .Values.game.name }}" ]; then
+                mkdir -p "/games/{{ .Values.game.name }}"
+                wget -O - -q "{{ .Values.game.downloadURL }}" | tar -C "/games/{{ .Values.game.name }}" --strip-components=1 -xz
+              fi
+          volumeMounts:
+            - name: games
+              mountPath: /games
+{{- if .Values.mods.installmods }}
         - name: {{ .Chart.Name }}-mods
           image: "{{ .Values.initContainer.image.repository }}:{{ .Values.initContainer.image.tag }}"
           imagePullPolicy: {{ .Values.initContainer.image.pullPolicy }}
@@ -58,6 +76,8 @@ spec:
               mountPath: /config
             - name: data
               mountPath: /data
+            - name: games
+              mountPath: /root/.minetest/games
 {{- if .Values.world.existingSecret }}
             - name: world-secret
               mountPath: /data/world.mt
@@ -81,6 +101,8 @@ spec:
         - name: data
           persistentVolumeClaim:
               claimName: {{ default (printf "%s-data" .Release.Name) .Values.persistence.existingClaim }}
+        - name: games
+          emptyDir: {}
 {{- if .Values.world.existingSecret }}
         - name: world-secret
           secret:

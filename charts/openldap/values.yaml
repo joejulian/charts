@@ -7,8 +7,11 @@ selectorLabels: {}
 podLabels: {}
 deploymentName: ""
 containerName: openldap
+maxOpenFiles: 1024
 args: []
-dataMountPath: /slapd.d
+dataMountPath: /data
+initContainer:
+  image: ghcr.io/containerd/busybox:1.36
 image:
   repository: registry.gitlab.com/joejulian/image-openldap
   tag: ""
@@ -43,7 +46,7 @@ configfiles:
     suffix		"dc=my-domain,dc=com"
     rootdn		"cn=Manager,dc=my-domain,dc=com"
     rootpw		secret
-    directory	/slapd.d/data
+    directory	/data/data
     index	objectClass	eq
 configdb:
   enabled: false

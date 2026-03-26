@@ -29,6 +29,7 @@ release_chart() {
   package="$(helm package "${chart_dir}" -d "${DIST_DIR}" | awk '{print $NF}')"
   helm push "${package}" "${OCI_REPO}"
   git tag -a "${tag}" -m "Release ${chart_name} ${version}"
+  git push origin "refs/tags/${tag}"
   gh release create "${tag}" "${package}" --title "${chart_name} ${version}" --notes "Automated release for ${chart_name} ${version}."
 }
 

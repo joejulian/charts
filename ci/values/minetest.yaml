@@ -1,5 +1,2 @@
 service:
   type: ClusterIP
-
-imagePullSecrets:
-  - name: ghcr-auth

@@ -10,7 +10,7 @@ controllers:
     containers:
       main:
         image:
-          repository: ghcr.io/home-assistant/home-assistant
+          repository: ghcr.io/joejulian/container-images/home-assistant
           # @default -- chart.appVersion
           tag:
           pullPolicy: IfNotPresent

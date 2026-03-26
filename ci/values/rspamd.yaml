@@ -17,8 +17,9 @@ config:
     milter_headers.conf: |
       extended_spam_headers = true;
 
-imagePullSecrets:
-  - name: ghcr-auth
+image:
+  repository: registry.gitlab.com/joejulian/container-rspamd
+  tag: latest
 
 persistence:
   enabled: false

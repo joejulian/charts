@@ -20,6 +20,37 @@ wait_for_workloads() {
   done < <(kubectl -n "${namespace}" get deployment,statefulset,daemonset -o name 2>/dev/null || true)
 }
 
+assert_cyrus_imap_ready() {
+  local namespace="$1"
+  local endpoint_ip=""
+  local attempt
+
+  for attempt in $(seq 1 30); do
+    endpoint_ip="$(kubectl -n "${namespace}" get endpoints cyrus-imap -o jsonpath='{.subsets[0].addresses[0].ip}' 2>/dev/null || true)"
+    if [[ -n "${endpoint_ip}" ]]; then
+      return 0
+    fi
+    sleep 2
+  done
+
+  echo "cyrus-imap service has no ready endpoints in namespace ${namespace}" >&2
+  return 1
+}
+
+run_chart_tests() {
+  local chart_name="$1"
+  local namespace="$2"
+
+  case "${chart_name}" in
+    cyrus-imap)
+      assert_cyrus_imap_ready "${namespace}"
+      ;;
+    *)
+      helm test "${chart_name}" -n "${namespace}" --timeout 5m
+      ;;
+  esac
+}
+
 setup_chart_fixtures() {
   local chart_name="$1"
   local namespace="$2"
@@ -82,11 +113,11 @@ test_chart() {
   helm "${helm_args[@]}"
   wait_for_workloads "${namespace}"
 
-  helm test "${chart_name}" -n "${namespace}" --timeout 5m
+  run_chart_tests "${chart_name}" "${namespace}"
 
   helm "${helm_args[@]}"
   wait_for_workloads "${namespace}"
-  helm test "${chart_name}" -n "${namespace}" --timeout 5m
+  run_chart_tests "${chart_name}" "${namespace}"
 }
 
 main() {

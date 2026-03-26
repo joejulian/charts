@@ -71,6 +71,20 @@ setup_chart_fixtures() {
   esac
 }
 
+setup_image_pull_secret() {
+  local namespace="$1"
+
+  if [[ -z "${GHCR_PULL_USERNAME:-}" || -z "${GHCR_PULL_PASSWORD:-}" ]]; then
+    return
+  fi
+
+  kubectl -n "${namespace}" create secret docker-registry ghcr-auth \
+    --docker-server=ghcr.io \
+    --docker-username="${GHCR_PULL_USERNAME}" \
+    --docker-password="${GHCR_PULL_PASSWORD}" \
+    --dry-run=client -o yaml | kubectl apply -f -
+}
+
 test_chart() {
   local chart_dir="$1"
   local chart_name
@@ -81,9 +95,9 @@ test_chart() {
 
   chart_name="$(basename "${chart_dir}")"
   namespace="ci-${chart_name}"
-  release_name="${namespace}"
+  release_name="${chart_name}"
   values_file="${REPO_ROOT}/ci/values/${chart_name}.yaml"
-  helm_args=(upgrade --install "${release_name}" "${chart_dir}" -n "${namespace}" --create-namespace --wait --timeout 10m)
+  helm_args=(upgrade --install "${chart_name}" "${chart_dir}" -n "${namespace}" --create-namespace --wait --timeout 10m)
 
   if [[ "${chart_name}" == "onstar2mqtt" && -z "${ONSTAR2MQTT_TEST_SECRET:-}" ]]; then
     echo "Skipping ${chart_name}; set ONSTAR2MQTT_TEST_SECRET to enable credentialed e2e coverage."
@@ -96,6 +110,7 @@ test_chart() {
 
   build_dependencies "${chart_dir}"
   kubectl get namespace "${namespace}" >/dev/null 2>&1 || kubectl create namespace "${namespace}"
+  setup_image_pull_secret "${namespace}"
   setup_chart_fixtures "${chart_name}" "${namespace}"
 
   helm "${helm_args[@]}"

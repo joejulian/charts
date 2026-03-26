@@ -13,7 +13,8 @@ saslauthd:
   enabled: true
   image:
     repository: ghcr.io/joejulian/container-images/saslauthd
-    tag: latest
+    # renovate: image=ghcr.io/joejulian/container-images/saslauthd
+    tag: 2.1.28-4
     pullPolicy: IfNotPresent
 
 imagePullSecrets: []

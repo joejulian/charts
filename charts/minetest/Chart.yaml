@@ -1,8 +1,8 @@
 apiVersion: v1
 description: A Helm chart for Kubernetes
 name: minetest
-# renovate: image=jwh1981/minetest
-appVersion: "latest"
+# renovate: image=ghcr.io/joejulian/container-images/minetest
+appVersion: "5.15.0-r1"
 home: https://github.com/joejulian/charts/tree/master/charts/minetest
 maintainers:
   - name: Joe Julian

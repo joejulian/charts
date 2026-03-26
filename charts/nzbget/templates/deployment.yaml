@@ -22,7 +22,8 @@ spec:
       terminationGracePeriodSeconds: 60
       containers:
         - name: {{ .Release.Name }}
-          image: {{ .Values.image }}:{{ default .Chart.AppVersion .Values.version }}
+          image: "{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
             - nzbget
             - --configfile
@@ -44,8 +45,8 @@ spec:
             - containerPort: 6789
 {{- if eq .Values.oauth_proxy.enabled true }}
         - name: {{ .Release.Name }}-oauth-proxy
-          image: {{ .Values.oauth_proxy.image }}:{{ .Values.oauth_proxy.version }}
-          imagePullPolicy: Always
+          image: "{{ .Values.oauth_proxy.image.repository }}:{{ .Values.oauth_proxy.image.tag }}"
+          imagePullPolicy: {{ .Values.oauth_proxy.image.pullPolicy }}
           args:
             - -cookie-domain=.{{ .Values.ingress.domain }}
             - -upstream=http://localhost:6789/

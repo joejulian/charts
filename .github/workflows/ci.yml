@@ -42,6 +42,7 @@ jobs:
     needs: lint
     permissions:
       contents: read
+      packages: read
     outputs:
       chart_count: ${{ steps.charts.outputs.chart_count }}
     steps:

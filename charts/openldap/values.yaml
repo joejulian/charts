@@ -7,6 +7,7 @@ selectorLabels: {}
 podLabels: {}
 deploymentName: ""
 containerName: openldap
+maxOpenFiles: 1024
 args: []
 dataMountPath: /data
 initContainer:

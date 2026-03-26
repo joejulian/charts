@@ -9,6 +9,8 @@ metadata:
     heritage: {{ .Release.Service }}
 spec:
   replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       {{- if .Values.selectorLabels }}
@@ -47,21 +49,28 @@ spec:
         - name: {{ .Values.containerName }}
           image: "{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /usr/sbin/prlimit
+            - --nofile={{ .Values.maxOpenFiles }}:{{ .Values.maxOpenFiles }}
+            - --
+            - /usr/bin/slapd
 {{ if .Values.args }}
           args:
 {{ toYaml .Values.args | indent 12 }}
 {{ else if .Values.configfiles }}
           args:
+            - -d
+            - "0"
             - -h
             - ldap://:{{ .Values.service.internalPort }}
             - -F
             - {{ .Values.dataMountPath }}/slapd.d
             - -f
             - /config/slapd.conf
-            - -d
-            - "0x8100"
 {{ else if not .Values.configfiles }}
           args:
+            - -d
+            - "0"
             - -F
             - {{ .Values.dataMountPath }}/slapd.d
 {{ end }}
@@ -70,6 +79,17 @@ spec:
           livenessProbe:
             tcpSocket:
               port: {{ .Values.service.internalPort }}
+            initialDelaySeconds: 120
+            periodSeconds: 10
+            timeoutSeconds: 1
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.service.internalPort }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 1
+            failureThreshold: 6
           volumeMounts:
             - name: data
               mountPath: {{ .Values.dataMountPath }}
@@ -81,8 +101,12 @@ spec:
 {{ toYaml .Values.resources | indent 12 }}
       volumes:
         - name: data
+{{ if .Values.persistence.enabled }}
           persistentVolumeClaim:
             claimName: {{ default (include "openldap.name" .) .Values.persistence.existingClaim }}
+{{ else }}
+          emptyDir: {}
+{{ end }}
 {{ if .Values.configfiles }}
         - name: config
           configMap:

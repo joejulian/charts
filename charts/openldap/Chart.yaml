@@ -1,8 +1,8 @@
 apiVersion: v2
 name: openldap
-version: 0.0.6
+version: 0.0.4
 # renovate: image=registry.gitlab.com/joejulian/image-openldap
-appVersion: "57ded59212435c138a822aa384b8825c87846af9"
+appVersion: "latest"
 description: OpenLDAP chart
 keywords:
 - openldap

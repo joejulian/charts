@@ -8,11 +8,14 @@ world:
   secretKey: world.mt
 mods:
   installmods: ""
+game:
+  name: minetest_game
+  downloadURL: https://github.com/luanti-org/minetest_game/archive/refs/heads/master.tar.gz
 persistence:
   existingClaim: ""
 replicaCount: 1
 image:
-  repository: jwh1981/minetest
+  repository: ghcr.io/joejulian/container-images/minetest
   tag: ""
   pullPolicy: IfNotPresent
 initContainer:
@@ -23,7 +26,7 @@ initContainer:
     pullPolicy: IfNotPresent
 
 command:
-  - /usr/games/minetest
+  - /usr/bin/minetest
   - --server
   - --config
   - /config/minetest.conf

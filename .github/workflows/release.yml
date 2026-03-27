@@ -34,6 +34,7 @@ jobs:
       - name: Release Changed Charts
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_PACKAGE_TOKEN: ${{ secrets.GHCR_PULL_PASSWORD }}
         run: ./scripts/release-charts.sh "${{ github.event.before }}" "${{ github.sha }}"
       - name: Push Tags
         run: git push --tags

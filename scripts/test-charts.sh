@@ -63,6 +63,21 @@ setup_chart_fixtures() {
         --from-file=master.cf="${REPO_ROOT}/ci/fixtures/postfix/master.cf" \
         --dry-run=client -o yaml | kubectl apply -f -
       ;;
+    unifi-cam-proxy)
+      kubectl -n "${namespace}" create secret generic unifi-cam-proxy-env \
+        --from-literal=PROTECT_NVR_HOST=protect.example.invalid \
+        --from-literal=PROTECT_NVR_USERNAME=test-user \
+        --from-literal=PROTECT_NVR_PASSWORD=test-password \
+        --from-literal=PROTECT_TOKEN=test-token \
+        --from-literal=CAMERA_DISPLAY_IP=192.0.2.10 \
+        --from-literal=CAMERA_NAME=front-door \
+        --from-literal=CAMERA_MODEL=UVC_G4_Dome \
+        --from-literal=CAMERA_MAC=AA:BB:CC:DD:EE:FF \
+        --dry-run=client -o yaml | kubectl apply -f -
+      kubectl -n "${namespace}" create secret generic unifi-cam-proxy-identity \
+        --from-file=client.pem="${REPO_ROOT}/ci/fixtures/unifi-cam-proxy/client.pem" \
+        --dry-run=client -o yaml | kubectl apply -f -
+      ;;
     onstar2mqtt)
       if [[ -n "${ONSTAR2MQTT_TEST_SECRET:-}" ]]; then
         printf '%s\n' "${ONSTAR2MQTT_TEST_SECRET}" | kubectl -n "${namespace}" apply -f -

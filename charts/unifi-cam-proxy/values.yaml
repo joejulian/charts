@@ -1,0 +1,230 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/joejulian/unifi-cam-proxy
+  pullPolicy: IfNotPresent
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+selectorLabels: {}
+podLabels: {}
+podAnnotations: {}
+
+strategy:
+  type: Recreate
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+command:
+  - /bin/sh
+  - -ec
+
+args:
+  - >
+    exec unifi-cam-proxy
+    --host "${PROTECT_NVR_HOST}"
+    --nvr-username "${PROTECT_NVR_USERNAME}"
+    --nvr-password "${PROTECT_NVR_PASSWORD}"
+    ${PROTECT_TOKEN:+--token "${PROTECT_TOKEN}"}
+    --cert /certs/client.pem
+    --mac "${CAMERA_MAC}"
+    --ip "${CAMERA_DISPLAY_IP}"
+    --name "${CAMERA_NAME}"
+    --model "${CAMERA_MODEL}"
+    rtsp
+    --source "${RTSP_SOURCE}"
+
+env:
+  - name: HOME
+    value: /tmp
+  - name: XDG_CONFIG_HOME
+    value: /tmp/.config
+  - name: RTSP_SOURCE
+    value: rtsp://camera-proxy-go2rtc.unifi.svc.cluster.local:8554/front-door
+
+extraEnv: []
+
+secretEnv:
+  enabled: true
+  name: ""
+
+identitySecret:
+  enabled: true
+  name: ""
+  defaultMode: 0440
+  mountPath: /certs/client.pem
+  subPath: client.pem
+
+lifecycle:
+  postStart:
+    exec:
+      command:
+        - /bin/sh
+        - -ec
+        - |
+          /usr/local/bin/python - <<'PY'
+          import base64
+          import json
+          import os
+          import ssl
+          import sys
+          import time
+          import urllib.error
+          import urllib.request
+
+          def normalize_mac(value):
+              return value.replace(":", "").replace("-", "").upper()
+
+          def read_json(url, headers, context):
+              req = urllib.request.Request(url, headers=headers)
+              with urllib.request.urlopen(req, context=context, timeout=15) as resp:
+                  return json.load(resp)
+
+          host = os.environ["PROTECT_NVR_HOST"]
+          base_url = f"https://{host}"
+          camera_mac = normalize_mac(os.environ["CAMERA_MAC"])
+
+          context = ssl.create_default_context()
+          context.check_hostname = False
+          context.verify_mode = ssl.CERT_NONE
+
+          token = None
+          csrf_token = None
+
+          for _ in range(10):
+              payload = json.dumps(
+                  {
+                      "username": os.environ["PROTECT_NVR_USERNAME"],
+                      "password": os.environ["PROTECT_NVR_PASSWORD"],
+                      "rememberMe": True,
+                  }
+              ).encode()
+              request = urllib.request.Request(
+                  f"{base_url}/api/auth/login",
+                  data=payload,
+                  headers={"Content-Type": "application/json"},
+                  method="POST",
+              )
+              try:
+                  with urllib.request.urlopen(request, context=context, timeout=15) as response:
+                      for header_value in response.headers.get_all("Set-Cookie", []):
+                          for part in header_value.split(";"):
+                              part = part.strip()
+                              if part.startswith("TOKEN="):
+                                  token = part.split("=", 1)[1]
+                                  break
+                          if token:
+                              break
+              except urllib.error.HTTPError as exc:
+                  if exc.code == 429:
+                      time.sleep(3)
+                      continue
+                  print(f"Protect RTSP enablement login failed: {exc.code}", file=sys.stderr)
+                  sys.exit(0)
+              except Exception as exc:
+                  print(f"Protect RTSP enablement login error: {exc}", file=sys.stderr)
+                  sys.exit(0)
+
+              if token:
+                  claims = json.loads(
+                      base64.urlsafe_b64decode(
+                          token.split(".")[1] + "=" * (-len(token.split(".")[1]) % 4)
+                      )
+                  )
+                  csrf_token = claims["csrfToken"]
+                  break
+
+          if not token or not csrf_token:
+              print("Protect RTSP enablement skipped: no session token", file=sys.stderr)
+              sys.exit(0)
+
+          headers = {
+              "Cookie": f"TOKEN={token}",
+              "Content-Type": "application/json",
+              "Referer": f"{base_url}/protect/devices/cameras",
+              "X-CSRF-Token": csrf_token,
+          }
+
+          for _ in range(60):
+              try:
+                  cameras = read_json(f"{base_url}/proxy/protect/api/cameras", headers, context)
+              except Exception as exc:
+                  print(f"Protect RTSP enablement camera lookup error: {exc}", file=sys.stderr)
+                  time.sleep(2)
+                  continue
+
+              camera = next(
+                  (
+                      item
+                      for item in cameras
+                      if normalize_mac(item.get("mac", "")) == camera_mac
+                  ),
+                  None,
+              )
+              if camera is None:
+                  time.sleep(2)
+                  continue
+
+              channels = camera.get("channels") or []
+              if channels and all(channel.get("isRtspEnabled") for channel in channels):
+                  sys.exit(0)
+
+              patch_payload = {
+                  "channels": [
+                      {"id": channel["id"], "isRtspEnabled": True}
+                      for channel in channels
+                  ]
+              }
+              request = urllib.request.Request(
+                  f"{base_url}/proxy/protect/api/cameras/{camera['id']}",
+                  data=json.dumps(patch_payload).encode(),
+                  headers=headers,
+                  method="PATCH",
+              )
+              try:
+                  with urllib.request.urlopen(request, context=context, timeout=15):
+                      pass
+                  time.sleep(2)
+              except Exception as exc:
+                  print(f"Protect RTSP enablement patch error: {exc}", file=sys.stderr)
+                  time.sleep(2)
+
+          print("Protect RTSP enablement timed out waiting for camera", file=sys.stderr)
+          PY
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: "2"
+    memory: 1Gi
+
+tmpVolume:
+  enabled: true
+  mountPath: /tmp
+
+extraVolumes: []
+extraVolumeMounts: []
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+test:
+  enabled: true

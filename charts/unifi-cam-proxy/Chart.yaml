@@ -1,0 +1,13 @@
+apiVersion: v2
+name: unifi-cam-proxy
+description: UniFi Protect camera proxy deployment
+type: application
+version: 0.1.0
+# renovate: image=ghcr.io/joejulian/unifi-cam-proxy
+appVersion: "0.3.5"
+home: https://github.com/joejulian/charts/tree/main/charts/unifi-cam-proxy
+maintainers:
+  - name: Joe Julian
+    email: me@joejulian.name
+sources:
+  - https://github.com/joejulian/unifi-cam-proxy

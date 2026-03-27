@@ -1,3 +1,5 @@
+annotations:
+  org.opencontainers.image.source: https://github.com/joejulian/charts
 apiVersion: v2
 # renovate: image=ghcr.io/joejulian/justmount
 appVersion: v0.2.9

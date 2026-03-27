@@ -1,3 +1,5 @@
+annotations:
+  org.opencontainers.image.source: https://github.com/joejulian/charts
 apiVersion: v2
 name: external-dns
 description: ExternalDNS deployment with configurable arguments and RBAC

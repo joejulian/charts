@@ -28,6 +28,13 @@ release_chart() {
 
   package="$(helm package "${chart_dir}" -d "${DIST_DIR}" | awk '{print $NF}')"
   helm push "${package}" "${OCI_REPO}"
+  if [[ -n "${GHCR_PACKAGE_TOKEN:-}" ]]; then
+    python3 "${REPO_ROOT}/scripts/verify-chart-package-public.py" \
+      "${chart_name}" \
+      --token "${GHCR_PACKAGE_TOKEN}"
+  else
+    echo "GHCR_PACKAGE_TOKEN is not set; skipping chart package visibility verification" >&2
+  fi
   git tag -a "${tag}" -m "Release ${chart_name} ${version}"
   git push origin "refs/tags/${tag}"
   gh release create "${tag}" "${package}" --title "${chart_name} ${version}" --notes "Automated release for ${chart_name} ${version}."

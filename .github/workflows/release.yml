@@ -34,11 +34,13 @@ jobs:
       - name: Release Changed Charts
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           GHCR_PACKAGE_TOKEN: ${{ github.token }}
         run: ./scripts/release-charts.sh "${{ github.event.before }}" "${{ github.sha }}"
       - name: Repair Missing Releases For Changed Charts
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: ./scripts/repair-chart-releases.sh --changed "${{ github.event.before }}" "${{ github.sha }}"
       - name: Push Tags
         run: git push --tags

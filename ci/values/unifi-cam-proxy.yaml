@@ -1,0 +1,15 @@
+command:
+  - /bin/sh
+  - -ec
+args:
+  - |
+    trap : TERM INT
+    sleep infinity & wait
+
+secretEnv:
+  name: unifi-cam-proxy-env
+
+identitySecret:
+  name: unifi-cam-proxy-identity
+
+lifecycle: {}

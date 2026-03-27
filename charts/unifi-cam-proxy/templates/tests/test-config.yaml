@@ -1,0 +1,49 @@
+{{- if .Values.test.enabled }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "unifi-cam-proxy.fullname" . }}-test-config"
+  labels:
+    {{- include "unifi-cam-proxy.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  containers:
+    - name: verify
+      image: bash:5.2.37
+      command: ["bash", "-ec"]
+      args:
+        - |
+          test -n "${PROTECT_NVR_HOST}"
+          test -n "${CAMERA_NAME}"
+          test -f /certs/client.pem
+      env:
+        {{- if and .Values.secretEnv.enabled .Values.secretEnv.name }}
+        - name: PROTECT_NVR_HOST
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.secretEnv.name }}
+              key: PROTECT_NVR_HOST
+        - name: CAMERA_NAME
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.secretEnv.name }}
+              key: CAMERA_NAME
+        {{- end }}
+      volumeMounts:
+        {{- if and .Values.identitySecret.enabled .Values.identitySecret.name }}
+        - name: certs
+          mountPath: /certs/client.pem
+          subPath: {{ .Values.identitySecret.subPath }}
+          readOnly: true
+        {{- end }}
+  volumes:
+    {{- if and .Values.identitySecret.enabled .Values.identitySecret.name }}
+    - name: certs
+      secret:
+        secretName: {{ .Values.identitySecret.name }}
+        defaultMode: {{ .Values.identitySecret.defaultMode }}
+    {{- end }}
+{{- end }}

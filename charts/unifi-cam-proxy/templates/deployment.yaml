@@ -1,0 +1,134 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "unifi-cam-proxy.fullname" . }}
+  labels:
+    {{- include "unifi-cam-proxy.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: {{ .Values.strategy.type }}
+  selector:
+    matchLabels:
+      {{- include "unifi-cam-proxy.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "unifi-cam-proxy.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: unifi-cam-proxy
+          image: "{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          command:
+            {{- toYaml .Values.command | nindent 12 }}
+          args:
+            {{- toYaml .Values.args | nindent 12 }}
+          {{- with .Values.lifecycle }}
+          lifecycle:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          env:
+            {{- toYaml .Values.env | nindent 12 }}
+            {{- if and .Values.secretEnv.enabled .Values.secretEnv.name }}
+            - name: PROTECT_NVR_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secretEnv.name }}
+                  key: PROTECT_NVR_HOST
+            - name: PROTECT_NVR_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secretEnv.name }}
+                  key: PROTECT_NVR_USERNAME
+            - name: PROTECT_NVR_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secretEnv.name }}
+                  key: PROTECT_NVR_PASSWORD
+            - name: PROTECT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secretEnv.name }}
+                  key: PROTECT_TOKEN
+            - name: CAMERA_DISPLAY_IP
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secretEnv.name }}
+                  key: CAMERA_DISPLAY_IP
+            - name: CAMERA_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secretEnv.name }}
+                  key: CAMERA_NAME
+            - name: CAMERA_MODEL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secretEnv.name }}
+                  key: CAMERA_MODEL
+            - name: CAMERA_MAC
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secretEnv.name }}
+                  key: CAMERA_MAC
+            {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            {{- if and .Values.identitySecret.enabled .Values.identitySecret.name }}
+            - name: certs
+              mountPath: {{ .Values.identitySecret.mountPath }}
+              subPath: {{ .Values.identitySecret.subPath }}
+              readOnly: true
+            {{- end }}
+            {{- if .Values.tmpVolume.enabled }}
+            - name: tmp
+              mountPath: {{ .Values.tmpVolume.mountPath }}
+            {{- end }}
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        {{- if and .Values.identitySecret.enabled .Values.identitySecret.name }}
+        - name: certs
+          secret:
+            secretName: {{ .Values.identitySecret.name }}
+            defaultMode: {{ .Values.identitySecret.defaultMode }}
+        {{- end }}
+        {{- if .Values.tmpVolume.enabled }}
+        - name: tmp
+          emptyDir: {}
+        {{- end }}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

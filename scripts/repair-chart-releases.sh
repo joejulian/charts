@@ -23,6 +23,12 @@ github_release_exists() {
   gh release view "${tag}" >/dev/null 2>&1
 }
 
+remote_tag_exists() {
+  local tag="$1"
+
+  git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1
+}
+
 ensure_dependencies() {
   local chart_dir="$1"
 
@@ -78,6 +84,9 @@ ensure_version() {
   fi
 
   if ! github_release_exists "${tag}"; then
+    if ! remote_tag_exists "${tag}"; then
+      git push origin "refs/tags/${tag}"
+    fi
     echo "Creating GitHub release ${tag}"
     gh release create "${tag}" "${package}" --title "${chart_name} ${version}" --notes "Automated release for ${chart_name} ${version}."
   fi

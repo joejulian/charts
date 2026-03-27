@@ -1,3 +1,5 @@
+annotations:
+  org.opencontainers.image.source: https://github.com/joejulian/charts
 apiVersion: v2
 name: cyrus-imap
 description: Cyrus IMAP server with optional saslauthd sidecar and TLS assets

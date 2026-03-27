@@ -1,3 +1,5 @@
+annotations:
+  org.opencontainers.image.source: https://github.com/joejulian/charts
 apiVersion: v2
 name: rspamd
 description: Rspamd deployment with configurable local and override configuration

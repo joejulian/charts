@@ -1,3 +1,5 @@
+annotations:
+  org.opencontainers.image.source: https://github.com/joejulian/charts
 apiVersion: v2
 name: nzbget
 description: An nzbget chart for Kubernetes

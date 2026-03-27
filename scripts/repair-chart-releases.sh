@@ -40,7 +40,7 @@ ensure_dependencies() {
 package_chart() {
   local chart_dir="$1"
 
-  ensure_dependencies "${chart_dir}"
+  ensure_dependencies "${chart_dir}" >/dev/null
   helm package "${chart_dir}" -d "${DIST_DIR}" | awk '{print $NF}'
 }
 

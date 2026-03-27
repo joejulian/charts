@@ -1,0 +1,49 @@
+name: Repair Releases
+
+on:
+  schedule:
+    - cron: "37 8 * * *"
+  workflow_dispatch:
+    inputs:
+      charts:
+        description: "Space-separated chart names to repair; blank repairs all charts"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: azure/setup-helm@v5
+      - name: Add Helm Repositories
+        run: ./scripts/setup-helm-repos.sh
+      - name: Login to GHCR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "${GITHUB_TOKEN}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - name: Configure Git Identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Make Scripts Executable
+        run: chmod +x scripts/*.sh
+      - name: Repair Missing Chart Releases
+        env:
+          CHARTS: ${{ inputs.charts }}
+        run: |
+          if [[ -n "${CHARTS}" ]]; then
+            # shellcheck disable=SC2206
+            chart_args=(${CHARTS})
+            ./scripts/repair-chart-releases.sh --charts "${chart_args[@]}"
+          else
+            ./scripts/repair-chart-releases.sh --all
+          fi
+      - name: Push Tags
+        run: git push --tags

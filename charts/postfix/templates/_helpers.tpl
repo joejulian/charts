@@ -64,3 +64,25 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Return the name of the managed config map when chart values provide config data.
+*/}}
+{{- define "postfix.configMapName" -}}
+{{- if .Values.config.nameOverride }}
+{{- .Values.config.nameOverride | trunc 63 | trimSuffix "-" }}
+{{- else }}
+{{- printf "%s-config" (include "postfix.fullname" .) | trunc 63 | trimSuffix "-" }}
+{{- end }}
+{{- end }}
+
+{{/*
+Return the name of the managed secret when chart values provide secret config data.
+*/}}
+{{- define "postfix.configSecretName" -}}
+{{- if .Values.config.secretNameOverride }}
+{{- .Values.config.secretNameOverride | trunc 63 | trimSuffix "-" }}
+{{- else }}
+{{- printf "%s-config-secret" (include "postfix.fullname" .) | trunc 63 | trimSuffix "-" }}
+{{- end }}
+{{- end }}

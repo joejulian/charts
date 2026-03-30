@@ -1,0 +1,10 @@
+{{- if .Values.config.data }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "postfix.configMapName" . }}
+  labels:
+    {{- include "postfix.labels" . | nindent 4 }}
+data:
+  {{- toYaml .Values.config.data | nindent 2 }}
+{{- end }}

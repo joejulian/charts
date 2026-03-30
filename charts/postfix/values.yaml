@@ -73,7 +73,19 @@ service:
   extraPorts: []
 
 config:
+  # If set, the chart renders a ConfigMap from this data and mounts it at /config.
+  # This is the preferred path for managing Postfix config through Helm values.
+  data: {}
+  # Optional override for the rendered ConfigMap name when config.data is set.
+  nameOverride: ""
+  # If set, the chart renders a Secret from this data and projects it into /config.
+  # This is intended to be populated through Flux HelmRelease valuesFrom.
+  secretData: {}
+  # Optional override for the rendered Secret name when config.secretData is set.
+  secretNameOverride: ""
+  # If config.data is empty, mount this pre-existing ConfigMap instead.
   existingConfigMap: postfix
+  # If config.secretData is empty, project this pre-existing Secret into /config instead.
   existingConfigSecret: ""
   certificateSecretName: postfix-certificate
   saslSmtpdSecretName: sasl-smtpd

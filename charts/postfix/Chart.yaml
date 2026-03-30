@@ -4,7 +4,7 @@ apiVersion: v2
 name: postfix
 description: Postfix SMTP relay with optional saslauthd sidecar
 type: application
-version: 0.2.0
+version: 0.2.1
 # renovate: image=ghcr.io/joejulian/container-images/postfix
 appVersion: "3.11.1"
 home: https://github.com/joejulian/charts/tree/master/charts/postfix

@@ -13,6 +13,20 @@ spec:
       {{- include "postfix.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+      {{- $podAnnotations := dict -}}
+      {{- if .Values.config.data }}
+      {{- $_ := set $podAnnotations "checksum/config" (toYaml .Values.config.data | sha256sum) -}}
+      {{- end }}
+      {{- if .Values.config.secretData }}
+      {{- $_ := set $podAnnotations "checksum/config-secret" (toYaml .Values.config.secretData | sha256sum) -}}
+      {{- end }}
+      {{- range $key, $value := .Values.podAnnotations }}
+      {{- $_ := set $podAnnotations $key $value -}}
+      {{- end }}
+      {{- if $podAnnotations }}
+      annotations:
+        {{- toYaml $podAnnotations | nindent 8 }}
+      {{- end }}
       labels:
         {{- include "postfix.selectorLabels" . | nindent 8 }}
         {{- with .Values.podLabels }}
@@ -22,10 +36,6 @@ spec:
       serviceAccountName: {{ include "postfix.serviceAccountName" . }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.podAnnotations }}
-      annotations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       securityContext:
@@ -104,14 +114,22 @@ spec:
         {{- end }}
       volumes:
         - name: postfix-config
-          {{- if .Values.config.existingConfigSecret }}
-          configMap: null
-          secret:
-            secretName: {{ .Values.config.existingConfigSecret }}
-          {{- else }}
-          configMap:
-            name: {{ .Values.config.existingConfigMap }}
-          {{- end }}
+          projected:
+            sources:
+{{- if .Values.config.data }}
+              - configMap:
+                  name: {{ include "postfix.configMapName" . }}
+{{- else if .Values.config.existingConfigMap }}
+              - configMap:
+                  name: {{ .Values.config.existingConfigMap }}
+{{- end }}
+{{- if .Values.config.secretData }}
+              - secret:
+                  secretName: {{ include "postfix.configSecretName" . }}
+{{- else if .Values.config.existingConfigSecret }}
+              - secret:
+                  secretName: {{ .Values.config.existingConfigSecret }}
+{{- end }}
 {{- if .Values.tls.enabled }}
         - name: postfix-certs
           secret:

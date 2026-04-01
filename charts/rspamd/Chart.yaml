@@ -4,9 +4,9 @@ apiVersion: v2
 name: rspamd
 description: Rspamd deployment with configurable local and override configuration
 type: application
-version: 1.0.0
+version: "2.0.0"
 # renovate: image=ghcr.io/joejulian/container-images/rspamd
-appVersion: "3.14.3"
+appVersion: "4.0.0"
 home: https://github.com/joejulian/charts/tree/main/charts/rspamd
 maintainers:
   - name: Joe Julian

@@ -125,10 +125,10 @@ spec:
 {{- end }}
 {{- if .Values.config.secretData }}
               - secret:
-                  secretName: {{ include "postfix.configSecretName" . }}
+                  name: {{ include "postfix.configSecretName" . }}
 {{- else if .Values.config.existingConfigSecret }}
               - secret:
-                  secretName: {{ .Values.config.existingConfigSecret }}
+                  name: {{ .Values.config.existingConfigSecret }}
 {{- end }}
 {{- if .Values.tls.enabled }}
         - name: postfix-certs

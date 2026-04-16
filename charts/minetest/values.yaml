@@ -22,7 +22,7 @@ initContainer:
   image:
     repository: alpine
     # renovate: image=alpine
-    tag: 3.23.3
+    tag: 3.23.4
     pullPolicy: IfNotPresent
 
 command:

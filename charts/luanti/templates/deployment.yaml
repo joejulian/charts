@@ -28,7 +28,7 @@ spec:
     spec:
       initContainers:
         - name: {{ .Chart.Name }}-game
-          image: "{{ .Values.initContainer.image.repository }}:{{ .Values.initContainer.image.tag }}"
+          image: "{{ .Values.initContainer.image.repository }}:{{ default .Chart.AppVersion .Values.initContainer.image.tag }}"
           imagePullPolicy: {{ .Values.initContainer.image.pullPolicy }}
           command:
             - sh
@@ -47,7 +47,7 @@ spec:
               mountPath: /games
 {{- if .Values.mods.installmods }}
         - name: {{ .Chart.Name }}-mods
-          image: "{{ .Values.initContainer.image.repository }}:{{ .Values.initContainer.image.tag }}"
+          image: "{{ .Values.initContainer.image.repository }}:{{ default .Chart.AppVersion .Values.initContainer.image.tag }}"
           imagePullPolicy: {{ .Values.initContainer.image.pullPolicy }}
           command:
             - sh

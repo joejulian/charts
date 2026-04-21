@@ -3,7 +3,7 @@ annotations:
 apiVersion: v1
 description: A Helm chart for running a Luanti server
 name: luanti
-# renovate: image=ghcr.io/joejulian/container-images/minetest
+# renovate: image=ghcr.io/joejulian/container-images/luanti
 appVersion: "5.15.0-r1"
 home: https://github.com/joejulian/charts/tree/main/charts/luanti
 maintainers:
@@ -11,4 +11,4 @@ maintainers:
     email: me@joejulian.name
 sources:
   - https://github.com/luanti-org/luanti
-version: 0.0.3
+version: 0.0.4

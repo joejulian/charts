@@ -15,18 +15,17 @@ persistence:
   existingClaim: ""
 replicaCount: 1
 image:
-  repository: ghcr.io/joejulian/container-images/minetest
+  repository: ghcr.io/joejulian/container-images/luanti
   tag: ""
   pullPolicy: IfNotPresent
 initContainer:
   image:
-    repository: alpine
-    # renovate: image=alpine
-    tag: 3.23.3
+    repository: ghcr.io/joejulian/container-images/luanti
+    tag: ""
     pullPolicy: IfNotPresent
 
 command:
-  - /usr/bin/minetest
+  - /usr/bin/luantiserver
   - --server
   - --config
   - /config/luanti.conf

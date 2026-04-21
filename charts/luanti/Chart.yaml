@@ -1,15 +1,14 @@
 annotations:
   org.opencontainers.image.source: https://github.com/joejulian/charts
 apiVersion: v1
-deprecated: true
-description: Deprecated chart retained for migration to luanti
-name: minetest
+description: A Helm chart for running a Luanti server
+name: luanti
 # renovate: image=ghcr.io/joejulian/container-images/minetest
 appVersion: "5.15.0-r1"
-home: https://github.com/joejulian/charts/tree/master/charts/minetest
+home: https://github.com/joejulian/charts/tree/main/charts/luanti
 maintainers:
   - name: Joe Julian
     email: me@joejulian.name
 sources:
-  - https://github.com/minetest/minetest
-version: 0.0.11
+  - https://github.com/luanti-org/luanti
+version: 0.0.1

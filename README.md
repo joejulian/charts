@@ -6,6 +6,7 @@ Consolidated Helm chart monorepo for the charts maintained under the `joejulian`
 
 - `home-assistant`
 - `justmount`
+- `luanti`
 - `minetest`
 - `mosquitto`
 - `nzbget`
@@ -13,6 +14,10 @@ Consolidated Helm chart monorepo for the charts maintained under the `joejulian`
 - `openldap`
 - `postfix`
 - `sonarr`
+
+Deprecated:
+
+- `minetest` in favor of `luanti`
 
 ## Automation
 

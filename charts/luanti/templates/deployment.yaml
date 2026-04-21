@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "luanti.fullname" . }}
+  labels:
+    app: {{ template "luanti.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: {{ template "luanti.name" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "luanti.name" . }}
+        release: {{ .Release.Name }}
+    spec:
+      initContainers:
+        - name: {{ .Chart.Name }}-game
+          image: "{{ .Values.initContainer.image.repository }}:{{ .Values.initContainer.image.tag }}"
+          imagePullPolicy: {{ .Values.initContainer.image.pullPolicy }}
+          command:
+            - sh
+            - -e
+            - -o
+            - pipefail
+            - -c
+            - |
+              mkdir -p "/games"
+              if [ ! -d "/games/{{ .Values.game.name }}" ]; then
+                mkdir -p "/games/{{ .Values.game.name }}"
+                wget -O - -q "{{ .Values.game.downloadURL }}" | tar -C "/games/{{ .Values.game.name }}" --strip-components=1 -xz
+              fi
+          volumeMounts:
+            - name: games
+              mountPath: /games
+{{- if .Values.mods.installmods }}
+        - name: {{ .Chart.Name }}-mods
+          image: "{{ .Values.initContainer.image.repository }}:{{ .Values.initContainer.image.tag }}"
+          imagePullPolicy: {{ .Values.initContainer.image.pullPolicy }}
+          command:
+            - sh
+            - -e
+            - -o
+            - pipefail
+            - -c
+            - |
+              [ ! -d /data/worldmods ] || rm -rf /data/worldmods
+              while read mod url; do
+                [ -n "${mod}" ] || continue
+                echo "Installing from ${mod}"
+                mkdir -p "/data/worldmods/${mod}"
+                wget -O - -q "${url}" | tar -C "/data/worldmods/${mod}" --strip-components=1 -xz
+              done < /config/installmods.txt
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: mods
+              mountPath: /config/installmods.txt
+              subPath: installmods.txt
+{{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+{{ toYaml .Values.command | indent 12 }}
+          volumeMounts:
+            - name: config-volume
+              mountPath: /config
+            - name: data
+              mountPath: /data
+            - name: games
+              mountPath: /root/.minetest/games
+{{- if .Values.world.existingSecret }}
+            - name: world-secret
+              mountPath: /data/world.mt
+              subPath: {{ .Values.world.secretKey }}
+{{- end }}
+          ports:
+            - name: dataport
+              containerPort: {{ .Values.service.internalPort }}
+              protocol: UDP
+          livenessProbe:
+            exec:
+              command:
+                - cat
+                - /proc/1/status
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+      volumes:
+        - name: config-volume
+          configMap:
+            name: {{ .Release.Name }}-conf
+        - name: data
+          persistentVolumeClaim:
+              claimName: {{ default (printf "%s-data" .Release.Name) .Values.persistence.existingClaim }}
+        - name: games
+          emptyDir: {}
+{{- if .Values.world.existingSecret }}
+        - name: world-secret
+          secret:
+            secretName: {{ .Values.world.existingSecret }}
+{{- end }}
+{{- if .Values.mods.installmods }}
+        - name: mods
+          configMap:
+            defaultMode: 420
+            name: {{ .Release.Name }}-mods
+{{- end }}
+    {{- if .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
+    {{- end }}

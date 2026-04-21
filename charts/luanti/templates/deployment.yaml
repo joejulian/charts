@@ -52,11 +52,23 @@ spec:
             - -c
             - |
               [ ! -d /data/worldmods ] || rm -rf /data/worldmods
+              mkdir -p /data/worldmods
+              tmp_root="$(mktemp -d)"
+              trap 'rm -rf "${tmp_root}"' EXIT
               while read mod url; do
                 [ -n "${mod}" ] || continue
                 echo "Installing from ${mod}"
-                mkdir -p "/data/worldmods/${mod}"
-                wget -O - -q "${url}" | tar -C "/data/worldmods/${mod}" --strip-components=1 -xz
+                mod_tmp="${tmp_root}/${mod}"
+                mkdir -p "${mod_tmp}"
+                wget -O - -q "${url}" | tar -C "${mod_tmp}" --strip-components=1 -xz
+                if [ -f "${mod_tmp}/modpack.conf" ]; then
+                  for entry in "${mod_tmp}"/*; do
+                    mv "${entry}" /data/worldmods/
+                  done
+                  rmdir "${mod_tmp}"
+                else
+                  mv "${mod_tmp}" "/data/worldmods/${mod}"
+                fi
               done < /config/installmods.txt
           volumeMounts:
             - name: data

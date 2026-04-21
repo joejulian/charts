@@ -58,7 +58,7 @@ spec:
             - |
               [ ! -d /data/worldmods ] || rm -rf /data/worldmods
               mkdir -p /data/worldmods
-              while read mod url; do
+              while read mod url || [ -n "${mod}" ]; do
                 [ -n "${mod}" ] || continue
                 echo "Installing from ${mod}"
                 mkdir -p "/data/worldmods/${mod}"

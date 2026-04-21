@@ -26,7 +26,6 @@ initContainer:
 
 command:
   - /usr/bin/luantiserver
-  - --server
   - --config
   - /config/luanti.conf
   - --gameid

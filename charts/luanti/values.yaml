@@ -26,7 +26,7 @@ initContainer:
     pullPolicy: IfNotPresent
 
 command:
-  - /usr/games/minetest
+  - /usr/bin/minetest
   - --server
   - --config
   - /config/luanti.conf

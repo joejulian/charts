@@ -2,7 +2,7 @@ annotations:
   org.opencontainers.image.source: https://github.com/joejulian/charts
 apiVersion: v2
 # renovate: image=ghcr.io/joejulian/justmount
-appVersion: v0.2.15
+appVersion: v0.2.16
 description: Node-only CSI driver for mounting existing filesystems
 home: https://github.com/joejulian/charts/tree/master/charts/justmount
 maintainers:
@@ -12,4 +12,4 @@ name: justmount
 sources:
 - https://github.com/joejulian/csi-justmount
 type: application
-version: "0.2.14"
+version: "0.2.15"

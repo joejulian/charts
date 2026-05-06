@@ -9,7 +9,7 @@ appVersion: 2026.3.4
 dependencies:
 - name: common
   repository: https://bjw-s-labs.github.io/helm-charts/
-  version: ~4
+  version: ~5.0.0
 description: Open source home automation that puts local control and privacy first
 home: https://github.com/pree/helm-charts/tree/master/charts/home-assistant
 icon: https://raw.githubusercontent.com/home-assistant/home-assistant.io/current/source/images/favicon-192x192.png

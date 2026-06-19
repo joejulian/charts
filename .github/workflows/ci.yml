@@ -15,7 +15,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: azure/setup-helm@v5
@@ -46,7 +46,7 @@ jobs:
     outputs:
       chart_count: ${{ steps.charts.outputs.chart_count }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: azure/setup-helm@v5

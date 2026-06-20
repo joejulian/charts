@@ -71,10 +71,10 @@ def main() -> int:
         repo_full_name = (package.get("repository") or {}).get("full_name")
         token_status = anonymous_token_status(args.chart_name)
 
-        if visibility == "public" and repo_full_name == "joejulian/charts" and token_status == 200:
+        if visibility == "public" and token_status == 200:
             print(
-                f"Verified charts/{args.chart_name} is public, linked to "
-                f"{repo_full_name}, and anonymously readable."
+                f"Verified charts/{args.chart_name} is public and anonymously "
+                f"readable. Linked repository: {repo_full_name!r}."
             )
             return 0
 

@@ -4,26 +4,26 @@ annotations:
       description: use template to generate README.md
   org.opencontainers.image.source: https://github.com/joejulian/charts
 apiVersion: v2
-# renovate: image=ghcr.io/home-operations/sonarr
-appVersion: 4.0.17.2969
+# renovate: image=ghcr.io/home-operations/radarr
+appVersion: 6.2.1.10461
 dependencies:
 - name: common
   repository: https://bjw-s-labs.github.io/helm-charts/
   version: 1.5.1
-description: Smart PVR for newsgroup and bittorrent users
-home: https://github.com/joejulian/charts/tree/main/charts/sonarr
-icon: https://raw.githubusercontent.com/Sonarr/Sonarr/develop/Logo/512.png
+description: A fork of Sonarr to work with movies à la Couchpotato
+home: https://github.com/joejulian/charts/tree/main/charts/radarr
+icon: https://raw.githubusercontent.com/Radarr/Radarr/develop/Logo/512.png
 keywords:
-- sonarr
+- radarr
 - servarr
 - torrent
 - usenet
 maintainers:
 - name: Joe Julian
-name: sonarr
+name: radarr
 sources:
-- https://github.com/Sonarr/Sonarr
+- https://github.com/Radarr/Radarr
 - https://github.com/home-operations/containers
 - https://github.com/pree/helm-charts
 type: application
-version: 0.0.3
+version: 1.28.1

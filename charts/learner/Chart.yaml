@@ -4,9 +4,9 @@ apiVersion: v2
 name: learner
 description: Spam learning cron job
 type: application
-version: 0.2.0
+version: "0.2.1"
 # renovate: image=ghcr.io/joejulian/container-images/learnspam
-appVersion: "0.1.0"
+appVersion: "0.1.1"
 home: https://github.com/joejulian/charts/tree/main/charts/learner
 maintainers:
   - name: Joe Julian

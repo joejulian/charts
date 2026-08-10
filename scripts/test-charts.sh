@@ -23,9 +23,8 @@ wait_for_workloads() {
 assert_cyrus_imap_ready() {
   local namespace="$1"
   local endpoint_ip=""
-  local attempt
 
-  for attempt in $(seq 1 30); do
+  for _ in {1..30}; do
     endpoint_ip="$(kubectl -n "${namespace}" get endpoints cyrus-imap -o jsonpath='{.subsets[0].addresses[0].ip}' 2>/dev/null || true)"
     if [[ -n "${endpoint_ip}" ]]; then
       return 0
@@ -44,7 +43,8 @@ assert_cyrus_imap_mount_guard() {
   pod="$(kubectl -n "${namespace}" get pods \
     -l app.kubernetes.io/name=cyrus-imap \
     --field-selector=status.phase=Running \
-    -o jsonpath='{.items[0].metadata.name}')"
+    --sort-by=.metadata.creationTimestamp \
+    -o name | tail -n 1)"
   if [[ -z "${pod}" ]]; then
     echo "cyrus-imap has no running pod in namespace ${namespace}" >&2
     return 1

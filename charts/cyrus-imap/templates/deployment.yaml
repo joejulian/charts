@@ -46,11 +46,19 @@ spec:
         - name: cyrus-imap
           image: "{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.mainContainer.mountGuard.enabled }}
+          command:
+            - /bin/sh
+            - /config/mount-guard.sh
+          args:
+            {{- concat .Values.mainContainer.command (default (list) .Values.mainContainer.args) | toYaml | nindent 12 }}
+          {{- else }}
           command:
             {{- toYaml .Values.mainContainer.command | nindent 12 }}
           {{- with .Values.mainContainer.args }}
           args:
             {{- toYaml . | nindent 12 }}
+          {{- end }}
           {{- end }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
@@ -68,20 +76,8 @@ spec:
             - name: sieve
               containerPort: 4190
           livenessProbe:
-            {{- if .Values.mainContainer.mountGuard.enabled }}
-            tcpSocket: null
-            exec:
-              command:
-                - /bin/sh
-                - -ec
-                - |-
-                  /usr/sbin/mountpoint -q /data/imap_db/socket
-                  /usr/sbin/ss -H -lnt "sport = :143" | /usr/bin/grep -q .
-            {{- else }}
-            exec: null
             tcpSocket:
               port: imap
-            {{- end }}
             initialDelaySeconds: 90
             periodSeconds: 10
           {{- if .Values.mainContainer.mountGuard.enabled }}

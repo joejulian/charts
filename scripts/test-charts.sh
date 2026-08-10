@@ -37,6 +37,24 @@ assert_cyrus_imap_ready() {
   return 1
 }
 
+assert_cyrus_imap_mount_guard() {
+  local namespace="$1"
+  local pod
+
+  pod="$(kubectl -n "${namespace}" get pods \
+    -l app.kubernetes.io/name=cyrus-imap \
+    --field-selector=status.phase=Running \
+    -o jsonpath='{.items[0].metadata.name}')"
+  if [[ -z "${pod}" ]]; then
+    echo "cyrus-imap has no running pod in namespace ${namespace}" >&2
+    return 1
+  fi
+
+  kubectl -n "${namespace}" exec "${pod}" -c cyrus-imap -- \
+    /bin/sh -ec '/usr/sbin/mountpoint -q /data/imap_db/socket
+/usr/sbin/ss -H -lnt "sport = :143" | /usr/bin/grep -q .'
+}
+
 run_chart_tests() {
   local chart_name="$1"
   local release_name="$2"
@@ -45,6 +63,7 @@ run_chart_tests() {
   case "${chart_name}" in
     cyrus-imap)
       assert_cyrus_imap_ready "${namespace}"
+      assert_cyrus_imap_mount_guard "${namespace}"
       ;;
     *)
       helm test "${release_name}" -n "${namespace}" --timeout 5m

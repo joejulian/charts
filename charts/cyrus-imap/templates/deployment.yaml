@@ -68,10 +68,30 @@ spec:
             - name: sieve
               containerPort: 4190
           livenessProbe:
+            {{- if .Values.mainContainer.mountGuard.enabled }}
+            exec:
+              command:
+                - /bin/sh
+                - -ec
+                - |-
+                  /usr/sbin/mountpoint -q /data/imap_db/socket
+                  /usr/sbin/ss -H -lnt "sport = :143" | /usr/bin/grep -q .
+            {{- else }}
             tcpSocket:
               port: imap
+            {{- end }}
             initialDelaySeconds: 90
             periodSeconds: 10
+          {{- if .Values.mainContainer.mountGuard.enabled }}
+          startupProbe:
+            exec:
+              command:
+                - /usr/sbin/mountpoint
+                - -q
+                - /data/imap_db/socket
+            periodSeconds: 5
+            failureThreshold: 3
+          {{- end }}
           readinessProbe:
             tcpSocket:
               port: imap

@@ -69,6 +69,7 @@ spec:
               containerPort: 4190
           livenessProbe:
             {{- if .Values.mainContainer.mountGuard.enabled }}
+            tcpSocket: null
             exec:
               command:
                 - /bin/sh
@@ -77,6 +78,7 @@ spec:
                   /usr/sbin/mountpoint -q /data/imap_db/socket
                   /usr/sbin/ss -H -lnt "sport = :143" | /usr/bin/grep -q .
             {{- else }}
+            exec: null
             tcpSocket:
               port: imap
             {{- end }}

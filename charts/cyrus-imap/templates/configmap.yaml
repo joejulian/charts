@@ -9,3 +9,31 @@ data:
 {{ .Values.config.cyrusConf | indent 4 }}
   imapd.conf: |
 {{ .Values.config.imapdConf | indent 4 }}
+  {{- if .Values.mainContainer.mountGuard.enabled }}
+  mount-guard.sh: |
+    #!/bin/sh
+    set -u
+
+    "$@" &
+    child_pid=$!
+
+    terminate() {
+      trap - INT TERM
+      kill -TERM "${child_pid}" 2>/dev/null || true
+      wait "${child_pid}"
+      exit $?
+    }
+    trap terminate INT TERM
+
+    while kill -0 "${child_pid}" 2>/dev/null; do
+      if ! /usr/sbin/mountpoint -q /data/imap_db/socket; then
+        echo "/data/imap_db/socket is no longer a mountpoint; terminating Cyrus" >&2
+        kill -TERM "${child_pid}" 2>/dev/null || true
+        wait "${child_pid}"
+        exit 1
+      fi
+      sleep 10
+    done
+
+    wait "${child_pid}"
+  {{- end }}

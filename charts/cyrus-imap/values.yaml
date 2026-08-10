@@ -76,6 +76,8 @@ mainContainer:
   args:
     - -command
     - /usr/lib/cyrus/master -C /config/imapd.conf -M /config/cyrus.conf
+  mountGuard:
+    enabled: true
 
 initContainer:
   enabled: true

@@ -126,6 +126,7 @@ test_chart() {
   local release_name
   local values_file
   local -a helm_args
+  local -a previous_helm_args
 
   chart_name="$(basename "${chart_dir}")"
   namespace="ci-${chart_name}"
@@ -146,6 +147,16 @@ test_chart() {
   kubectl get namespace "${namespace}" >/dev/null 2>&1 || kubectl create namespace "${namespace}"
   setup_image_pull_secret "${namespace}"
   setup_chart_fixtures "${chart_name}" "${namespace}"
+
+  if [[ "${chart_name}" == "cyrus-imap" ]]; then
+    previous_helm_args=(upgrade --install "${release_name}" \
+      oci://ghcr.io/joejulian/charts/cyrus-imap \
+      --version 0.1.4 -n "${namespace}" --wait --timeout 10m)
+    if [[ -f "${values_file}" ]]; then
+      previous_helm_args+=(-f "${values_file}")
+    fi
+    helm "${previous_helm_args[@]}"
+  fi
 
   helm "${helm_args[@]}"
   wait_for_workloads "${namespace}"

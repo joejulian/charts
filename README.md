@@ -5,6 +5,7 @@ Consolidated Helm chart monorepo for the charts maintained under the `joejulian`
 ## Charts
 
 - `home-assistant`
+- `hostpath-pv-remediator`
 - `justmount`
 - `luanti`
 - `minetest`

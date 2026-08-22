@@ -1,0 +1,15 @@
+HostPath PV Remediator is installed in {{ .Release.Namespace }}.
+
+Remediation enabled: {{ .Values.remediation.enabled }}
+Manual approval required: {{ .Values.remediation.requireApproval }}
+Eligible-node selector: {{ .Values.controller.eligibleNodeSelector }}
+
+The chart never creates a repair Job during installation. The controller creates
+one only after its fail-closed checks pass. When admissionPolicy.enabled is true,
+all other Job shapes are denied, generated repair Pods are validated after
+mutation, and interactive Pod connections are denied in this namespace.
+{{- if not .Values.remediation.enabled }}
+
+Verify this observe-only release and all four admission policy bindings before
+enabling remediation in a later upgrade.
+{{- end }}

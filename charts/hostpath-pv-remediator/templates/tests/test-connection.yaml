@@ -1,0 +1,57 @@
+{{- if .Values.service.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "hostpath-pv-remediator.testName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "hostpath-pv-remediator.labels" . | nindent 4 }}
+    app.kubernetes.io/component: test
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "hostpath-pv-remediator.testName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "hostpath-pv-remediator.labels" . | nindent 4 }}
+    app.kubernetes.io/component: test
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  serviceAccountName: {{ include "hostpath-pv-remediator.testName" . }}
+  automountServiceAccountToken: false
+  restartPolicy: Never
+  enableServiceLinks: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    runAsGroup: 65532
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: health
+      image: {{ include "hostpath-pv-remediator.testImage" . | quote }}
+      imagePullPolicy: {{ .Values.test.image.pullPolicy }}
+      args:
+        - --fail
+        - --silent
+        - --show-error
+        - --max-time
+        - "10"
+        - http://{{ include "hostpath-pv-remediator.fullname" . }}:{{ .Values.service.healthPort }}{{ .Values.probes.readiness.path }}
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+{{- end -}}

@@ -1,0 +1,141 @@
+{{- include "hostpath-pv-remediator.validate" . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "hostpath-pv-remediator.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "hostpath-pv-remediator.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "hostpath-pv-remediator.controllerSelectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "hostpath-pv-remediator.controllerSelectorLabels" . | nindent 8 }}
+        {{- with .Values.controller.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.controller.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "hostpath-pv-remediator.serviceAccountName" . }}
+      automountServiceAccountToken: true
+      enableServiceLinks: false
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: controller
+          image: {{ include "hostpath-pv-remediator.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.controller.command }}
+          command:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          args:
+            {{- if .Values.controller.argsOverride }}
+            {{- toYaml .Values.controller.argsOverride | nindent 12 }}
+            {{- else }}
+            - {{ printf "--enable-remediation=%t" .Values.remediation.enabled | quote }}
+            - {{ printf "--require-approval=%t" .Values.remediation.requireApproval | quote }}
+            - {{ printf "--node-selector=%s" .Values.controller.eligibleNodeSelector | quote }}
+            - {{ printf "--condition-type=%s" .Values.controller.conditionType | quote }}
+            - {{ printf "--condition-message-regexp=%s" .Values.controller.conditionMessageRegexp | quote }}
+            - {{ printf "--max-heartbeat-age=%s" .Values.controller.maxHeartbeatAge | quote }}
+            - {{ printf "--max-future-clock-skew=%s" .Values.controller.maxFutureClockSkew | quote }}
+            - {{ printf "--trigger-after=%s" .Values.controller.triggerAfter | quote }}
+            - {{ printf "--poll-interval=%s" .Values.controller.pollInterval | quote }}
+            - {{ printf "--drain-timeout=%s" .Values.controller.drainTimeout | quote }}
+            - {{ printf "--verification-timeout=%s" .Values.controller.verificationTimeout | quote }}
+            - {{ printf "--stabilization=%s" .Values.controller.stabilization | quote }}
+            - {{ printf "--recycle-timeout=%s" .Values.controller.recycleTimeout | quote }}
+            - {{ printf "--allow-empty-dir=%t" .Values.controller.allowEmptyDir | quote }}
+            - {{ printf "--lease-namespace=%s" .Release.Namespace | quote }}
+            - {{ printf "--lease-name=%s" (include "hostpath-pv-remediator.repairLeaseName" .) | quote }}
+            - {{ printf "--lease-duration=%vs" .Values.remediation.leaseDurationSeconds | quote }}
+            - {{ printf "--repair-namespace=%s" .Release.Namespace | quote }}
+            - {{ printf "--repair-service-account=%s" (include "hostpath-pv-remediator.repairServiceAccountName" .) | quote }}
+            - {{ printf "--repair-image=%s" (include "hostpath-pv-remediator.image" .) | quote }}
+            - {{ printf "--repair-image-pull-policy=%s" .Values.image.pullPolicy | quote }}
+            - {{ printf "--mount-target=%s" .Values.repair.mountTarget | quote }}
+            - {{ printf "--expected-fstype=%s" .Values.repair.expectedFSType | quote }}
+            - {{ printf "--expected-source=%s" .Values.repair.expectedSource | quote }}
+            - {{ printf "--systemd-unit=%s" .Values.repair.systemdUnit | quote }}
+            - {{ printf "--waiting-threshold=%v" .Values.repair.waitingThreshold | quote }}
+            - {{ printf "--repair-active-deadline=%vs" .Values.repair.activeDeadlineSeconds | quote }}
+            - {{ printf "--repair-verify-timeout=%vs" .Values.repair.verifyTimeoutSeconds | quote }}
+            - {{ printf "--repair-poll-interval=%vs" .Values.repair.pollIntervalSeconds | quote }}
+            - {{ printf "--repair-ttl-after-finished=%vs" .Values.repair.ttlSecondsAfterFinished | quote }}
+            - {{ printf "--metrics-bind-address=%s" .Values.controller.metricsBindAddress | quote }}
+            - {{ printf "--health-probe-bind-address=%s" .Values.controller.healthProbeBindAddress | quote }}
+            - {{ printf "--leader-elect=%t" .Values.leaderElection.enabled | quote }}
+            - {{ printf "--leader-election-namespace=%s" .Release.Namespace | quote }}
+            {{- end }}
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.service.metricsPort }}
+              protocol: TCP
+            - name: health
+              containerPort: {{ .Values.service.healthPort }}
+              protocol: TCP
+          {{- with .Values.probes.startup }}
+          {{- if .enabled }}
+          startupProbe:
+            httpGet:
+              path: {{ .path }}
+              port: health
+            periodSeconds: {{ .periodSeconds }}
+            timeoutSeconds: {{ .timeoutSeconds }}
+            failureThreshold: {{ .failureThreshold }}
+          {{- end }}
+          {{- end }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probes.liveness.path }}
+              port: health
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probes.readiness.path }}
+              port: health
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+          securityContext:
+            {{- toYamlPretty .Values.securityContext | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

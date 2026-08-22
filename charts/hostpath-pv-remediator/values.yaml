@@ -1,0 +1,129 @@
+replicaCount: 1
+
+image:
+  repository: git.julianfamily.org/joejulian/hostpath-pv-remediator
+  tag: ""
+  digest: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  name: ""
+  annotations: {}
+
+repairServiceAccount:
+  name: ""
+  annotations: {}
+
+controller:
+  command: []
+  argsOverride: []
+  eligibleNodeSelector: hostpath-pv-remediator/enabled=true
+  conditionType: HostpathPVMountProblem
+  conditionMessageRegexp: '^hostpath_pv fuse backlog too high:'
+  maxHeartbeatAge: 15m
+  maxFutureClockSkew: 1m
+  triggerAfter: 12h
+  pollInterval: 30s
+  drainTimeout: 30m
+  verificationTimeout: 30m
+  stabilization: 15m
+  recycleTimeout: 20m
+  allowEmptyDir: false
+  metricsBindAddress: :8080
+  healthProbeBindAddress: :8081
+  podAnnotations: {}
+  podLabels: {}
+
+leaderElection:
+  enabled: true
+
+remediation:
+  enabled: false
+  requireApproval: true
+  leaseName: hostpath-pv-remediator-repair-lock
+  leaseDurationSeconds: 60
+
+repair:
+  mountTarget: /tmp/hostpath_pv
+  expectedFSType: fuse.example
+  expectedSource: example.invalid:/volume
+  systemdUnit: tmp-hostpath_pv.mount
+  waitingThreshold: 8
+  activeDeadlineSeconds: 600
+  verifyTimeoutSeconds: 300
+  pollIntervalSeconds: 5
+  ttlSecondsAfterFinished: 86400
+
+admissionPolicy:
+  enabled: true
+  jobControllerUsername: system:serviceaccount:kube-system:job-controller
+
+service:
+  enabled: true
+  type: ClusterIP
+  annotations: {}
+  metricsPort: 8080
+  healthPort: 8081
+
+probes:
+  liveness:
+    path: /healthz
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 3
+  readiness:
+    path: /readyz
+    initialDelaySeconds: 2
+    periodSeconds: 5
+    timeoutSeconds: 2
+    failureThreshold: 3
+  startup:
+    enabled: true
+    path: /healthz
+    periodSeconds: 2
+    timeoutSeconds: 2
+    failureThreshold: 30
+
+resources:
+  requests:
+    cpu: 25m
+    memory: 64Mi
+  limits:
+    cpu: 250m
+    memory: 128Mi
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+priorityClassName: ""
+terminationGracePeriodSeconds: 30
+
+test:
+  image:
+    repository: curlimages/curl
+    tag: "8.16.0"
+    digest: ""
+    pullPolicy: IfNotPresent

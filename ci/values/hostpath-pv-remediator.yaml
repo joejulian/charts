@@ -1,0 +1,24 @@
+image:
+  repository: registry.k8s.io/e2e-test-images/agnhost
+  tag: "2.53"
+  digest: sha256:1c5d47ecd9c4fca235ec0eeb9af0c39d8dd981ae703805a1f23676a9bf47c3bb
+
+controller:
+  command:
+    - /agnhost
+  argsOverride:
+    - netexec
+    - --http-port=8081
+    - --udp-port=0
+
+probes:
+  readiness:
+    path: /healthz
+
+resources:
+  requests:
+    cpu: 5m
+    memory: 16Mi
+  limits:
+    cpu: 100m
+    memory: 64Mi

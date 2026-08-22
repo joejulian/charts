@@ -1,0 +1,682 @@
+{{- if .Values.admissionPolicy.enabled }}
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: {{ include "hostpath-pv-remediator.admissionPolicyName" . }}
+  labels:
+    {{- include "hostpath-pv-remediator.labels" . | nindent 4 }}
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    matchPolicy: Exact
+    resourceRules:
+      - apiGroups: ["batch"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["jobs"]
+        scope: Namespaced
+  variables:
+    - name: podSpec
+      expression: object.spec.template.spec
+    - name: repairContainer
+      expression: object.spec.template.spec.containers[0]
+  validations:
+    - expression: >-
+        request.userInfo.username == {{ include "hostpath-pv-remediator.controllerUsername" . | toJson }}
+      message: Only the controller ServiceAccount may create or update repair Jobs.
+    - expression: >-
+        object.metadata.name.matches('^hostpath-pv-remediator-[0-9a-f]{16}$')
+      message: Only deterministic hostpath-pv-remediator repair Job names are allowed in this namespace.
+    - expression: >-
+        has(object.metadata.labels) &&
+        'app.kubernetes.io/managed-by' in object.metadata.labels &&
+        object.metadata.labels['app.kubernetes.io/managed-by'] == 'hostpath-pv-remediator' &&
+        'hostpath-pv-remediator/incident-id' in object.metadata.labels &&
+        object.metadata.labels['hostpath-pv-remediator/incident-id'].matches('^[0-9a-f]{16}$') &&
+        object.metadata.name == 'hostpath-pv-remediator-' + object.metadata.labels['hostpath-pv-remediator/incident-id'] &&
+        has(object.metadata.annotations) &&
+        'hostpath-pv-remediator/node-name' in object.metadata.annotations &&
+        object.metadata.annotations['hostpath-pv-remediator/node-name'] == variables.podSpec.nodeName
+      message: The repair Job identity must bind one incident ID to its target Node.
+    - expression: >-
+        has(object.spec.template.metadata.labels) &&
+        size(object.spec.template.metadata.labels) == 6 &&
+        'app.kubernetes.io/managed-by' in object.spec.template.metadata.labels &&
+        object.spec.template.metadata.labels['app.kubernetes.io/managed-by'] == 'hostpath-pv-remediator' &&
+        'hostpath-pv-remediator/incident-id' in object.spec.template.metadata.labels &&
+        object.spec.template.metadata.labels['hostpath-pv-remediator/incident-id'] == object.metadata.labels['hostpath-pv-remediator/incident-id'] &&
+        'batch.kubernetes.io/controller-uid' in object.spec.template.metadata.labels &&
+        object.spec.template.metadata.labels['batch.kubernetes.io/controller-uid'] == object.metadata.uid &&
+        'batch.kubernetes.io/job-name' in object.spec.template.metadata.labels &&
+        object.spec.template.metadata.labels['batch.kubernetes.io/job-name'] == object.metadata.name &&
+        'controller-uid' in object.spec.template.metadata.labels &&
+        object.spec.template.metadata.labels['controller-uid'] == object.metadata.uid &&
+        'job-name' in object.spec.template.metadata.labels &&
+        object.spec.template.metadata.labels['job-name'] == object.metadata.name &&
+        has(object.spec.template.metadata.annotations) &&
+        size(object.spec.template.metadata.annotations) == 1 &&
+        'hostpath-pv-remediator/node-name' in object.spec.template.metadata.annotations &&
+        object.spec.template.metadata.annotations['hostpath-pv-remediator/node-name'] == variables.podSpec.nodeName
+      message: The repair Pod labels must preserve the incident and generated Job identities.
+    - expression: >-
+        has(object.spec.selector) &&
+        has(object.spec.selector.matchLabels) &&
+        size(object.spec.selector.matchLabels) == 1 &&
+        'batch.kubernetes.io/controller-uid' in object.spec.selector.matchLabels &&
+        object.spec.selector.matchLabels['batch.kubernetes.io/controller-uid'] == object.metadata.uid &&
+        (!has(object.spec.selector.matchExpressions) || size(object.spec.selector.matchExpressions) == 0)
+      message: The repair Job must use only the API server generated UID selector.
+    - expression: >-
+        object.spec.backoffLimit == 0 &&
+        object.spec.completions == 1 &&
+        object.spec.parallelism == 1 &&
+        object.spec.activeDeadlineSeconds == {{ .Values.repair.activeDeadlineSeconds }} &&
+        object.spec.ttlSecondsAfterFinished == {{ .Values.repair.ttlSecondsAfterFinished }} &&
+        (!has(object.spec.suspend) || object.spec.suspend == false) &&
+        !has(object.spec.podFailurePolicy) &&
+        !has(object.spec.successPolicy) &&
+        !has(object.spec.backoffLimitPerIndex) &&
+        !has(object.spec.maxFailedIndexes) &&
+        (!has(object.spec.manualSelector) || object.spec.manualSelector == false) &&
+        (!has(object.spec.completionMode) || object.spec.completionMode == 'NonIndexed') &&
+        (!has(object.spec.managedBy) || object.spec.managedBy == 'kubernetes.io/job-controller') &&
+        object.spec.podReplacementPolicy == 'Failed'
+      message: The repair Job retry, replacement, completion, concurrency, deadline, and TTL contract is immutable.
+    - expression: >-
+        variables.podSpec.nodeName != '' &&
+        variables.podSpec.hostPID == true &&
+        (!has(variables.podSpec.hostIPC) || variables.podSpec.hostIPC == false) &&
+        (!has(variables.podSpec.hostNetwork) || variables.podSpec.hostNetwork == false) &&
+        variables.podSpec.restartPolicy == 'Never' &&
+        variables.podSpec.serviceAccountName == {{ include "hostpath-pv-remediator.repairServiceAccountName" . | toJson }} &&
+        (!has(variables.podSpec.serviceAccount) || variables.podSpec.serviceAccount == variables.podSpec.serviceAccountName) &&
+        variables.podSpec.automountServiceAccountToken == false &&
+        variables.podSpec.enableServiceLinks == false &&
+        variables.podSpec.terminationGracePeriodSeconds == 5 &&
+        (!has(variables.podSpec.dnsPolicy) || variables.podSpec.dnsPolicy == 'ClusterFirst') &&
+        (!has(variables.podSpec.schedulerName) || variables.podSpec.schedulerName == 'default-scheduler')
+      message: The repair Pod must be node-pinned, host-PID-only, tokenless, and one-shot.
+    - expression: >-
+        !has(variables.podSpec.activeDeadlineSeconds) &&
+        (!has(variables.podSpec.nodeSelector) || size(variables.podSpec.nodeSelector) == 0) &&
+        !has(variables.podSpec.shareProcessNamespace) &&
+        (!has(variables.podSpec.imagePullSecrets) || size(variables.podSpec.imagePullSecrets) == 0) &&
+        (!has(variables.podSpec.hostname) || variables.podSpec.hostname == '') &&
+        {{- if semverCompare ">=1.36.0-0" .Capabilities.KubeVersion.Version }}
+        (!has(variables.podSpec.hostnameOverride) || variables.podSpec.hostnameOverride == '') &&
+        {{- end }}
+        (!has(variables.podSpec.subdomain) || variables.podSpec.subdomain == '') &&
+        !has(variables.podSpec.affinity) &&
+        (!has(variables.podSpec.hostAliases) || size(variables.podSpec.hostAliases) == 0) &&
+        (!has(variables.podSpec.priorityClassName) || variables.podSpec.priorityClassName == '') &&
+        !has(variables.podSpec.priority) &&
+        !has(variables.podSpec.dnsConfig)
+      message: The repair Pod may not gain alternate identity, network, or scheduling inputs.
+    - expression: >-
+        (!has(variables.podSpec.readinessGates) || size(variables.podSpec.readinessGates) == 0) &&
+        !has(variables.podSpec.runtimeClassName) &&
+        !has(variables.podSpec.preemptionPolicy) &&
+        (!has(variables.podSpec.overhead) || size(variables.podSpec.overhead) == 0) &&
+        (!has(variables.podSpec.topologySpreadConstraints) || size(variables.podSpec.topologySpreadConstraints) == 0) &&
+        !has(variables.podSpec.setHostnameAsFQDN) &&
+        !has(variables.podSpec.os) &&
+        !has(variables.podSpec.hostUsers) &&
+        (!has(variables.podSpec.schedulingGates) || size(variables.podSpec.schedulingGates) == 0) &&
+        (!has(variables.podSpec.resourceClaims) || size(variables.podSpec.resourceClaims) == 0) &&
+        !has(variables.podSpec.resources) &&
+        {{- if semverCompare ">=1.36.0-0" .Capabilities.KubeVersion.Version }}
+        !has(variables.podSpec.schedulingGroup)
+        {{- else }}
+        !has(variables.podSpec.workloadRef)
+        {{- end }}
+      message: The repair Pod may not gain runtime, topology, resource-claim, or workload extensions.
+    - expression: >-
+        !has(variables.podSpec.securityContext) ||
+        (!has(variables.podSpec.securityContext.appArmorProfile) &&
+        !has(variables.podSpec.securityContext.fsGroup) &&
+        !has(variables.podSpec.securityContext.fsGroupChangePolicy) &&
+        !has(variables.podSpec.securityContext.runAsGroup) &&
+        !has(variables.podSpec.securityContext.runAsNonRoot) &&
+        !has(variables.podSpec.securityContext.runAsUser) &&
+        !has(variables.podSpec.securityContext.seLinuxChangePolicy) &&
+        !has(variables.podSpec.securityContext.seLinuxOptions) &&
+        !has(variables.podSpec.securityContext.seccompProfile) &&
+        (!has(variables.podSpec.securityContext.supplementalGroups) || size(variables.podSpec.securityContext.supplementalGroups) == 0) &&
+        !has(variables.podSpec.securityContext.supplementalGroupsPolicy) &&
+        (!has(variables.podSpec.securityContext.sysctls) || size(variables.podSpec.securityContext.sysctls) == 0) &&
+        !has(variables.podSpec.securityContext.windowsOptions))
+      message: The repair Pod may not gain a Pod-level security context.
+    - expression: >-
+        size(variables.podSpec.containers) == 1 &&
+        (!has(variables.podSpec.initContainers) || size(variables.podSpec.initContainers) == 0) &&
+        (!has(variables.podSpec.ephemeralContainers) || size(variables.podSpec.ephemeralContainers) == 0)
+      message: The repair Pod may contain only its single repair container.
+    - expression: >-
+        variables.repairContainer.name == 'repair' &&
+        variables.repairContainer.image == {{ include "hostpath-pv-remediator.image" . | toJson }} &&
+        variables.repairContainer.image.matches('^.+@sha256:[a-f0-9]{64}$') &&
+        variables.repairContainer.imagePullPolicy == {{ .Values.image.pullPolicy | toJson }} &&
+        (!has(variables.repairContainer.command) || size(variables.repairContainer.command) == 0) &&
+        variables.repairContainer.args =={{ include "hostpath-pv-remediator.repairArgsCEL" . | nindent 8 }}
+      message: The repair container image digest, pull policy, and argument vector must match the release contract.
+    - expression: >-
+        variables.repairContainer.securityContext.privileged == true &&
+        variables.repairContainer.securityContext.allowPrivilegeEscalation == true &&
+        variables.repairContainer.securityContext.readOnlyRootFilesystem == true &&
+        variables.repairContainer.securityContext.runAsUser == 0 &&
+        variables.repairContainer.securityContext.seccompProfile.type == 'Unconfined' &&
+        !has(variables.repairContainer.securityContext.appArmorProfile) &&
+        !has(variables.repairContainer.securityContext.capabilities) &&
+        !has(variables.repairContainer.securityContext.procMount) &&
+        !has(variables.repairContainer.securityContext.runAsGroup) &&
+        !has(variables.repairContainer.securityContext.runAsNonRoot) &&
+        !has(variables.repairContainer.securityContext.seLinuxOptions) &&
+        !has(variables.repairContainer.securityContext.windowsOptions)
+      message: The narrowly scoped repair container security context is immutable.
+    - expression: >-
+        (!has(variables.repairContainer.env) || size(variables.repairContainer.env) == 0) &&
+        (!has(variables.repairContainer.envFrom) || size(variables.repairContainer.envFrom) == 0) &&
+        (!has(variables.repairContainer.ports) || size(variables.repairContainer.ports) == 0) &&
+        (!has(variables.repairContainer.resizePolicy) || size(variables.repairContainer.resizePolicy) == 0) &&
+        (!has(variables.repairContainer.volumeDevices) || size(variables.repairContainer.volumeDevices) == 0) &&
+        (!has(variables.repairContainer.workingDir) || variables.repairContainer.workingDir == '') &&
+        !has(variables.repairContainer.lifecycle) &&
+        !has(variables.repairContainer.livenessProbe) &&
+        !has(variables.repairContainer.readinessProbe) &&
+        !has(variables.repairContainer.startupProbe) &&
+        !has(variables.repairContainer.restartPolicy) &&
+        (!has(variables.repairContainer.restartPolicyRules) || size(variables.repairContainer.restartPolicyRules) == 0) &&
+        (!has(variables.repairContainer.stdin) || variables.repairContainer.stdin == false) &&
+        (!has(variables.repairContainer.stdinOnce) || variables.repairContainer.stdinOnce == false) &&
+        (!has(variables.repairContainer.tty) || variables.repairContainer.tty == false) &&
+        (!has(variables.repairContainer.terminationMessagePath) || variables.repairContainer.terminationMessagePath == '/dev/termination-log') &&
+        (!has(variables.repairContainer.terminationMessagePolicy) || variables.repairContainer.terminationMessagePolicy == 'File') &&
+        (!has(variables.repairContainer.resources) ||
+          ((!has(variables.repairContainer.resources.limits) || size(variables.repairContainer.resources.limits) == 0) &&
+          (!has(variables.repairContainer.resources.requests) || size(variables.repairContainer.resources.requests) == 0) &&
+          (!has(variables.repairContainer.resources.claims) || size(variables.repairContainer.resources.claims) == 0)))
+      message: The repair container may not gain environment, hooks, probes, restart rules, network, resource, or device inputs.
+    - expression: >-
+        size(variables.repairContainer.volumeMounts) == 2 &&
+        variables.repairContainer.volumeMounts.exists(m,
+          m.name == 'fuse-connections' &&
+          m.mountPath == '/host-sys/fs/fuse/connections' &&
+          (!has(m.readOnly) || m.readOnly == false) &&
+          (!has(m.mountPropagation) || m.mountPropagation == '') &&
+          !has(m.recursiveReadOnly) &&
+          (!has(m.subPath) || m.subPath == '') &&
+          (!has(m.subPathExpr) || m.subPathExpr == '')) &&
+        variables.repairContainer.volumeMounts.exists(m,
+          m.name == 'host-state' &&
+          m.mountPath == '/host-state' &&
+          (!has(m.readOnly) || m.readOnly == false) &&
+          (!has(m.mountPropagation) || m.mountPropagation == '') &&
+          !has(m.recursiveReadOnly) &&
+          (!has(m.subPath) || m.subPath == '') &&
+          (!has(m.subPathExpr) || m.subPathExpr == ''))
+      message: The repair container may mount only the FUSE connection tree and its host lock directory.
+    - expression: >-
+        size(variables.podSpec.volumes) == 2 &&
+        variables.podSpec.volumes.exists(v,
+          v.name == 'fuse-connections' &&
+          has(v.hostPath) &&
+          v.hostPath.path == '/sys/fs/fuse/connections' &&
+          v.hostPath.type == 'Directory') &&
+        variables.podSpec.volumes.exists(v,
+          v.name == 'host-state' &&
+          has(v.hostPath) &&
+          v.hostPath.path == '/var/lib/hostpath-pv-remediator' &&
+          v.hostPath.type == 'DirectoryOrCreate')
+      message: The repair Pod host paths and hostPath types are immutable.
+    - expression: >-
+        size(variables.podSpec.tolerations) == 1 &&
+        variables.podSpec.tolerations[0].operator == 'Exists' &&
+        (!has(variables.podSpec.tolerations[0].key) || variables.podSpec.tolerations[0].key == '') &&
+        (!has(variables.podSpec.tolerations[0].effect) || variables.podSpec.tolerations[0].effect == '') &&
+        (!has(variables.podSpec.tolerations[0].value) || variables.podSpec.tolerations[0].value == '') &&
+        !has(variables.podSpec.tolerations[0].tolerationSeconds)
+      message: The repair Pod must use exactly one all-node toleration.
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: {{ include "hostpath-pv-remediator.admissionPolicyName" . }}
+  labels:
+    {{- include "hostpath-pv-remediator.labels" . | nindent 4 }}
+spec:
+  policyName: {{ include "hostpath-pv-remediator.admissionPolicyName" . }}
+  validationActions:
+    - Deny
+  matchResources:
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: {{ .Release.Namespace }}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: {{ include "hostpath-pv-remediator.podAdmissionPolicyName" . }}
+  labels:
+    {{- include "hostpath-pv-remediator.labels" . | nindent 4 }}
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    matchPolicy: Exact
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods", "pods/ephemeralcontainers", "pods/resize"]
+        scope: Namespaced
+  matchConditions:
+    - name: generated-repair-pod
+      expression: >-
+        (has(object.metadata.labels) &&
+          'app.kubernetes.io/managed-by' in object.metadata.labels &&
+          object.metadata.labels['app.kubernetes.io/managed-by'] == 'hostpath-pv-remediator') ||
+        (has(object.spec.serviceAccountName) &&
+          object.spec.serviceAccountName == {{ include "hostpath-pv-remediator.repairServiceAccountName" . | toJson }}) ||
+        (has(object.spec.hostPID) && object.spec.hostPID == true) ||
+        (has(object.spec.hostIPC) && object.spec.hostIPC == true) ||
+        (has(object.spec.hostNetwork) && object.spec.hostNetwork == true) ||
+        object.spec.containers.exists(container,
+          has(container.securityContext) &&
+          ((has(container.securityContext.privileged) && container.securityContext.privileged == true) ||
+          (has(container.securityContext.procMount) && container.securityContext.procMount == 'Unmasked') ||
+          (has(container.securityContext.capabilities) &&
+            has(container.securityContext.capabilities.add) &&
+            size(container.securityContext.capabilities.add) > 0))) ||
+        (has(object.spec.initContainers) && size(object.spec.initContainers) > 0) ||
+        (has(object.spec.ephemeralContainers) && size(object.spec.ephemeralContainers) > 0) ||
+        (has(object.spec.volumes) && object.spec.volumes.exists(volume, has(volume.hostPath))) ||
+        (has(object.metadata.ownerReferences) &&
+          object.metadata.ownerReferences.exists(owner,
+            owner.apiVersion == 'batch/v1' &&
+            owner.kind == 'Job' &&
+            owner.controller == true &&
+            owner.name.matches('^hostpath-pv-remediator-[0-9a-f]{16}$'))) ||
+        (request.operation == 'UPDATE' &&
+          ((has(oldObject.metadata.labels) &&
+            'app.kubernetes.io/managed-by' in oldObject.metadata.labels &&
+            oldObject.metadata.labels['app.kubernetes.io/managed-by'] == 'hostpath-pv-remediator') ||
+          (has(oldObject.spec.serviceAccountName) &&
+            oldObject.spec.serviceAccountName == {{ include "hostpath-pv-remediator.repairServiceAccountName" . | toJson }}) ||
+          (has(oldObject.spec.hostPID) && oldObject.spec.hostPID == true) ||
+          (has(oldObject.spec.hostIPC) && oldObject.spec.hostIPC == true) ||
+          (has(oldObject.spec.hostNetwork) && oldObject.spec.hostNetwork == true) ||
+          oldObject.spec.containers.exists(container,
+            has(container.securityContext) &&
+            ((has(container.securityContext.privileged) && container.securityContext.privileged == true) ||
+            (has(container.securityContext.procMount) && container.securityContext.procMount == 'Unmasked') ||
+            (has(container.securityContext.capabilities) &&
+              has(container.securityContext.capabilities.add) &&
+              size(container.securityContext.capabilities.add) > 0))) ||
+          (has(oldObject.spec.initContainers) && size(oldObject.spec.initContainers) > 0) ||
+          (has(oldObject.spec.ephemeralContainers) && size(oldObject.spec.ephemeralContainers) > 0) ||
+          (has(oldObject.spec.volumes) && oldObject.spec.volumes.exists(volume, has(volume.hostPath))) ||
+          (has(oldObject.metadata.ownerReferences) &&
+            oldObject.metadata.ownerReferences.exists(owner,
+              owner.apiVersion == 'batch/v1' &&
+              owner.kind == 'Job' &&
+              owner.controller == true &&
+              owner.name.matches('^hostpath-pv-remediator-[0-9a-f]{16}$')))))
+  variables:
+    - name: podSpec
+      expression: object.spec
+    - name: repairContainer
+      expression: object.spec.containers[0]
+    - name: incidentID
+      expression: object.metadata.labels['hostpath-pv-remediator/incident-id']
+    - name: jobOwner
+      expression: object.metadata.ownerReferences.filter(owner, owner.controller == true)[0]
+  validations:
+    - expression: >-
+        request.operation != 'CREATE' ||
+        request.userInfo.username == {{ .Values.admissionPolicy.jobControllerUsername | toJson }}
+      message: Only the configured Kubernetes Job controller may create a repair Pod.
+    - expression: >-
+        has(object.metadata.labels) &&
+        size(object.metadata.labels) == 6 &&
+        'app.kubernetes.io/managed-by' in object.metadata.labels &&
+        object.metadata.labels['app.kubernetes.io/managed-by'] == 'hostpath-pv-remediator' &&
+        'hostpath-pv-remediator/incident-id' in object.metadata.labels &&
+        variables.incidentID.matches('^[0-9a-f]{16}$') &&
+        'batch.kubernetes.io/controller-uid' in object.metadata.labels &&
+        object.metadata.labels['batch.kubernetes.io/controller-uid'] == string(variables.jobOwner.uid) &&
+        'controller-uid' in object.metadata.labels &&
+        object.metadata.labels['controller-uid'] == string(variables.jobOwner.uid) &&
+        'batch.kubernetes.io/job-name' in object.metadata.labels &&
+        object.metadata.labels['batch.kubernetes.io/job-name'] == variables.jobOwner.name &&
+        'job-name' in object.metadata.labels &&
+        object.metadata.labels['job-name'] == variables.jobOwner.name
+      message: The generated repair Pod labels must preserve the incident and Job identity.
+    - expression: >-
+        size(object.metadata.ownerReferences) == 1 &&
+        variables.jobOwner.apiVersion == 'batch/v1' &&
+        variables.jobOwner.kind == 'Job' &&
+        variables.jobOwner.controller == true &&
+        variables.jobOwner.blockOwnerDeletion == true &&
+        string(variables.jobOwner.uid) != '' &&
+        variables.jobOwner.name == 'hostpath-pv-remediator-' + variables.incidentID &&
+        object.metadata.generateName == variables.jobOwner.name + '-' &&
+        object.metadata.name.startsWith(object.metadata.generateName)
+      message: The generated repair Pod must be controlled by its deterministic incident Job.
+    - expression: >-
+        (request.operation == 'CREATE' &&
+          has(object.metadata.finalizers) &&
+          size(object.metadata.finalizers) == 1 &&
+          object.metadata.finalizers[0] == 'batch.kubernetes.io/job-tracking') ||
+        (request.operation == 'UPDATE' &&
+          ((request.userInfo.username == {{ .Values.admissionPolicy.jobControllerUsername | toJson }} &&
+            (!has(object.metadata.finalizers) ||
+            size(object.metadata.finalizers) == 0 ||
+            (size(object.metadata.finalizers) == 1 &&
+              object.metadata.finalizers[0] == 'batch.kubernetes.io/job-tracking'))) ||
+          (request.userInfo.username != {{ .Values.admissionPolicy.jobControllerUsername | toJson }} &&
+            ((!has(object.metadata.finalizers) && !has(oldObject.metadata.finalizers)) ||
+            (has(object.metadata.finalizers) && has(oldObject.metadata.finalizers) &&
+              object.metadata.finalizers == oldObject.metadata.finalizers)))))
+      message: The generated repair Pod may use only the Kubernetes Job tracking finalizer.
+    - expression: >-
+        has(object.metadata.annotations) &&
+        'hostpath-pv-remediator/node-name' in object.metadata.annotations &&
+        object.metadata.annotations['hostpath-pv-remediator/node-name'] == variables.podSpec.nodeName &&
+        ((request.operation == 'CREATE' && size(object.metadata.annotations) == 1) ||
+        (request.operation == 'UPDATE' &&
+          has(oldObject.metadata.annotations) &&
+          'hostpath-pv-remediator/node-name' in oldObject.metadata.annotations &&
+          object.metadata.annotations['hostpath-pv-remediator/node-name'] == oldObject.metadata.annotations['hostpath-pv-remediator/node-name'] &&
+          object.metadata.annotations.all(key, value,
+            key == 'hostpath-pv-remediator/node-name' ||
+            (key in oldObject.metadata.annotations && oldObject.metadata.annotations[key] == value)) &&
+          oldObject.metadata.annotations.all(key, value,
+            key == 'hostpath-pv-remediator/node-name' ||
+            (key in object.metadata.annotations && object.metadata.annotations[key] == value))))
+      message: The generated repair Pod must preserve the Job's exact target Node binding.
+    - expression: >-
+        variables.podSpec.nodeName != '' &&
+        variables.podSpec.hostPID == true &&
+        (!has(variables.podSpec.hostIPC) || variables.podSpec.hostIPC == false) &&
+        (!has(variables.podSpec.hostNetwork) || variables.podSpec.hostNetwork == false) &&
+        variables.podSpec.restartPolicy == 'Never' &&
+        variables.podSpec.serviceAccountName == {{ include "hostpath-pv-remediator.repairServiceAccountName" . | toJson }} &&
+        variables.podSpec.serviceAccount == variables.podSpec.serviceAccountName &&
+        variables.podSpec.automountServiceAccountToken == false &&
+        variables.podSpec.enableServiceLinks == false &&
+        variables.podSpec.terminationGracePeriodSeconds == 5 &&
+        variables.podSpec.dnsPolicy == 'ClusterFirst' &&
+        variables.podSpec.schedulerName == 'default-scheduler' &&
+        variables.podSpec.preemptionPolicy == 'PreemptLowerPriority' &&
+        variables.podSpec.priority == 0
+      message: The generated repair Pod must retain its defaulted, node-pinned, tokenless, one-shot policy.
+    - expression: >-
+        !has(variables.podSpec.activeDeadlineSeconds) &&
+        (!has(variables.podSpec.nodeSelector) || size(variables.podSpec.nodeSelector) == 0) &&
+        !has(variables.podSpec.shareProcessNamespace) &&
+        (!has(variables.podSpec.imagePullSecrets) || size(variables.podSpec.imagePullSecrets) == 0) &&
+        (!has(variables.podSpec.hostname) || variables.podSpec.hostname == '') &&
+        {{- if semverCompare ">=1.36.0-0" .Capabilities.KubeVersion.Version }}
+        (!has(variables.podSpec.hostnameOverride) || variables.podSpec.hostnameOverride == '') &&
+        {{- end }}
+        (!has(variables.podSpec.subdomain) || variables.podSpec.subdomain == '') &&
+        !has(variables.podSpec.affinity) &&
+        (!has(variables.podSpec.hostAliases) || size(variables.podSpec.hostAliases) == 0) &&
+        (!has(variables.podSpec.priorityClassName) || variables.podSpec.priorityClassName == '') &&
+        !has(variables.podSpec.dnsConfig)
+      message: The generated repair Pod may not gain alternate identity, network, or scheduling inputs.
+    - expression: >-
+        (!has(variables.podSpec.readinessGates) || size(variables.podSpec.readinessGates) == 0) &&
+        !has(variables.podSpec.runtimeClassName) &&
+        (!has(variables.podSpec.overhead) || size(variables.podSpec.overhead) == 0) &&
+        (!has(variables.podSpec.topologySpreadConstraints) || size(variables.podSpec.topologySpreadConstraints) == 0) &&
+        !has(variables.podSpec.setHostnameAsFQDN) &&
+        !has(variables.podSpec.os) &&
+        !has(variables.podSpec.hostUsers) &&
+        (!has(variables.podSpec.schedulingGates) || size(variables.podSpec.schedulingGates) == 0) &&
+        (!has(variables.podSpec.resourceClaims) || size(variables.podSpec.resourceClaims) == 0) &&
+        !has(variables.podSpec.resources) &&
+        {{- if semverCompare ">=1.36.0-0" .Capabilities.KubeVersion.Version }}
+        !has(variables.podSpec.schedulingGroup)
+        {{- else }}
+        !has(variables.podSpec.workloadRef)
+        {{- end }}
+      message: The generated repair Pod may not gain runtime, topology, resource-claim, or workload extensions.
+    - expression: >-
+        !has(variables.podSpec.securityContext.appArmorProfile) &&
+        !has(variables.podSpec.securityContext.fsGroup) &&
+        !has(variables.podSpec.securityContext.fsGroupChangePolicy) &&
+        !has(variables.podSpec.securityContext.runAsGroup) &&
+        !has(variables.podSpec.securityContext.runAsNonRoot) &&
+        !has(variables.podSpec.securityContext.runAsUser) &&
+        !has(variables.podSpec.securityContext.seLinuxChangePolicy) &&
+        !has(variables.podSpec.securityContext.seLinuxOptions) &&
+        !has(variables.podSpec.securityContext.seccompProfile) &&
+        (!has(variables.podSpec.securityContext.supplementalGroups) || size(variables.podSpec.securityContext.supplementalGroups) == 0) &&
+        !has(variables.podSpec.securityContext.supplementalGroupsPolicy) &&
+        (!has(variables.podSpec.securityContext.sysctls) || size(variables.podSpec.securityContext.sysctls) == 0) &&
+        !has(variables.podSpec.securityContext.windowsOptions)
+      message: The generated repair Pod may not gain a Pod-level security context.
+    - expression: >-
+        size(variables.podSpec.containers) == 1 &&
+        (!has(variables.podSpec.initContainers) || size(variables.podSpec.initContainers) == 0) &&
+        (!has(variables.podSpec.ephemeralContainers) || size(variables.podSpec.ephemeralContainers) == 0)
+      message: The generated repair Pod may contain only its single repair container.
+    - expression: >-
+        variables.repairContainer.name == 'repair' &&
+        variables.repairContainer.image == {{ include "hostpath-pv-remediator.image" . | toJson }} &&
+        variables.repairContainer.image.matches('^.+@sha256:[a-f0-9]{64}$') &&
+        variables.repairContainer.imagePullPolicy == {{ .Values.image.pullPolicy | toJson }} &&
+        (!has(variables.repairContainer.command) || size(variables.repairContainer.command) == 0) &&
+        variables.repairContainer.args =={{ include "hostpath-pv-remediator.repairArgsCEL" . | nindent 8 }}
+      message: The generated repair container image digest, pull policy, and arguments are immutable.
+    - expression: >-
+        variables.repairContainer.securityContext.privileged == true &&
+        variables.repairContainer.securityContext.allowPrivilegeEscalation == true &&
+        variables.repairContainer.securityContext.readOnlyRootFilesystem == true &&
+        variables.repairContainer.securityContext.runAsUser == 0 &&
+        variables.repairContainer.securityContext.seccompProfile.type == 'Unconfined' &&
+        !has(variables.repairContainer.securityContext.appArmorProfile) &&
+        !has(variables.repairContainer.securityContext.capabilities) &&
+        !has(variables.repairContainer.securityContext.procMount) &&
+        !has(variables.repairContainer.securityContext.runAsGroup) &&
+        !has(variables.repairContainer.securityContext.runAsNonRoot) &&
+        !has(variables.repairContainer.securityContext.seLinuxOptions) &&
+        !has(variables.repairContainer.securityContext.windowsOptions)
+      message: The generated repair container security context is immutable.
+    - expression: >-
+        (!has(variables.repairContainer.env) || size(variables.repairContainer.env) == 0) &&
+        (!has(variables.repairContainer.envFrom) || size(variables.repairContainer.envFrom) == 0) &&
+        (!has(variables.repairContainer.ports) || size(variables.repairContainer.ports) == 0) &&
+        (!has(variables.repairContainer.resizePolicy) || size(variables.repairContainer.resizePolicy) == 0) &&
+        (!has(variables.repairContainer.volumeDevices) || size(variables.repairContainer.volumeDevices) == 0) &&
+        (!has(variables.repairContainer.workingDir) || variables.repairContainer.workingDir == '') &&
+        !has(variables.repairContainer.lifecycle) &&
+        !has(variables.repairContainer.livenessProbe) &&
+        !has(variables.repairContainer.readinessProbe) &&
+        !has(variables.repairContainer.startupProbe) &&
+        !has(variables.repairContainer.restartPolicy) &&
+        (!has(variables.repairContainer.restartPolicyRules) || size(variables.repairContainer.restartPolicyRules) == 0) &&
+        (!has(variables.repairContainer.stdin) || variables.repairContainer.stdin == false) &&
+        (!has(variables.repairContainer.stdinOnce) || variables.repairContainer.stdinOnce == false) &&
+        (!has(variables.repairContainer.tty) || variables.repairContainer.tty == false) &&
+        variables.repairContainer.terminationMessagePath == '/dev/termination-log' &&
+        variables.repairContainer.terminationMessagePolicy == 'File' &&
+        (!has(variables.repairContainer.resources.limits) || size(variables.repairContainer.resources.limits) == 0) &&
+        (!has(variables.repairContainer.resources.requests) || size(variables.repairContainer.resources.requests) == 0) &&
+        (!has(variables.repairContainer.resources.claims) || size(variables.repairContainer.resources.claims) == 0)
+      message: The generated repair container may not gain environment, hooks, probes, restart rules, or resource inputs.
+    - expression: >-
+        size(variables.repairContainer.volumeMounts) == 2 &&
+        variables.repairContainer.volumeMounts.exists(m,
+          m.name == 'fuse-connections' &&
+          m.mountPath == '/host-sys/fs/fuse/connections' &&
+          (!has(m.readOnly) || m.readOnly == false) &&
+          (!has(m.mountPropagation) || m.mountPropagation == '') &&
+          !has(m.recursiveReadOnly) &&
+          (!has(m.subPath) || m.subPath == '') &&
+          (!has(m.subPathExpr) || m.subPathExpr == '')) &&
+        variables.repairContainer.volumeMounts.exists(m,
+          m.name == 'host-state' &&
+          m.mountPath == '/host-state' &&
+          (!has(m.readOnly) || m.readOnly == false) &&
+          (!has(m.mountPropagation) || m.mountPropagation == '') &&
+          !has(m.recursiveReadOnly) &&
+          (!has(m.subPath) || m.subPath == '') &&
+          (!has(m.subPathExpr) || m.subPathExpr == ''))
+      message: The generated repair container may mount only the FUSE tree and persistent host state.
+    - expression: >-
+        size(variables.podSpec.volumes) == 2 &&
+        variables.podSpec.volumes.exists(v,
+          v.name == 'fuse-connections' &&
+          has(v.hostPath) &&
+          v.hostPath.path == '/sys/fs/fuse/connections' &&
+          v.hostPath.type == 'Directory') &&
+        variables.podSpec.volumes.exists(v,
+          v.name == 'host-state' &&
+          has(v.hostPath) &&
+          v.hostPath.path == '/var/lib/hostpath-pv-remediator' &&
+          v.hostPath.type == 'DirectoryOrCreate')
+      message: The generated repair Pod host paths and types are immutable.
+    - expression: >-
+        size(variables.podSpec.tolerations) == 1 &&
+        variables.podSpec.tolerations[0].operator == 'Exists' &&
+        (!has(variables.podSpec.tolerations[0].key) || variables.podSpec.tolerations[0].key == '') &&
+        (!has(variables.podSpec.tolerations[0].effect) || variables.podSpec.tolerations[0].effect == '') &&
+        (!has(variables.podSpec.tolerations[0].value) || variables.podSpec.tolerations[0].value == '') &&
+        !has(variables.podSpec.tolerations[0].tolerationSeconds)
+      message: The generated repair Pod must retain exactly one all-node toleration.
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: {{ include "hostpath-pv-remediator.podAdmissionPolicyName" . }}
+  labels:
+    {{- include "hostpath-pv-remediator.labels" . | nindent 4 }}
+spec:
+  policyName: {{ include "hostpath-pv-remediator.podAdmissionPolicyName" . }}
+  validationActions:
+    - Deny
+  matchResources:
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: {{ .Release.Namespace }}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: {{ include "hostpath-pv-remediator.connectAdmissionPolicyName" . }}
+  labels:
+    {{- include "hostpath-pv-remediator.labels" . | nindent 4 }}
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    matchPolicy: Exact
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CONNECT"]
+        resources: ["pods/attach", "pods/exec", "pods/portforward", "pods/proxy"]
+        scope: Namespaced
+  validations:
+    - expression: "false"
+      message: Interactive Pod access is forbidden in the remediation namespace.
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: {{ include "hostpath-pv-remediator.connectAdmissionPolicyName" . }}
+  labels:
+    {{- include "hostpath-pv-remediator.labels" . | nindent 4 }}
+spec:
+  policyName: {{ include "hostpath-pv-remediator.connectAdmissionPolicyName" . }}
+  validationActions:
+    - Deny
+  matchResources:
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: {{ .Release.Namespace }}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: {{ include "hostpath-pv-remediator.nodeAdmissionPolicyName" . }}
+  labels:
+    {{- include "hostpath-pv-remediator.labels" . | nindent 4 }}
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    matchPolicy: Exact
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["UPDATE"]
+        resources: ["nodes"]
+        scope: Cluster
+  matchConditions:
+    - name: controller-service-account
+      expression: >-
+        request.userInfo.username == {{ include "hostpath-pv-remediator.controllerUsername" . | toJson }}
+  variables:
+    - name: mutableAnnotations
+      expression: >-
+        [
+          'hostpath-pv-remediator/incident-id',
+          'hostpath-pv-remediator/first-seen',
+          'hostpath-pv-remediator/phase',
+          'hostpath-pv-remediator/started-at',
+          'hostpath-pv-remediator/original-unschedulable',
+          'hostpath-pv-remediator/repair-job',
+          'hostpath-pv-remediator/repair-completed-at',
+          'hostpath-pv-remediator/verification-started-at',
+          'hostpath-pv-remediator/healthy-since',
+          'hostpath-pv-remediator/healthy-heartbeat',
+          'hostpath-pv-remediator/recycle-started-at',
+          'hostpath-pv-remediator/recycle-targets',
+          'hostpath-pv-remediator/handled-incident',
+          'hostpath-pv-remediator/failure'
+        ]
+  validations:
+    - expression: >-
+        ((!has(object.metadata.labels) && !has(oldObject.metadata.labels)) ||
+          (has(object.metadata.labels) && has(oldObject.metadata.labels) && object.metadata.labels == oldObject.metadata.labels)) &&
+        ((!has(object.metadata.finalizers) && !has(oldObject.metadata.finalizers)) ||
+          (has(object.metadata.finalizers) && has(oldObject.metadata.finalizers) && object.metadata.finalizers == oldObject.metadata.finalizers)) &&
+        ((!has(object.metadata.ownerReferences) && !has(oldObject.metadata.ownerReferences)) ||
+          (has(object.metadata.ownerReferences) && has(oldObject.metadata.ownerReferences) && object.metadata.ownerReferences == oldObject.metadata.ownerReferences))
+      message: The controller may not change Node labels, finalizers, or owner references.
+    - expression: >-
+        (!has(object.metadata.annotations) || object.metadata.annotations.all(key, value,
+          key in variables.mutableAnnotations ||
+          (has(oldObject.metadata.annotations) && key in oldObject.metadata.annotations && oldObject.metadata.annotations[key] == value))) &&
+        (!has(oldObject.metadata.annotations) || oldObject.metadata.annotations.all(key, value,
+          key in variables.mutableAnnotations ||
+          (has(object.metadata.annotations) && key in object.metadata.annotations && object.metadata.annotations[key] == value)))
+      message: The controller may change only its state annotations and may not self-approve an incident.
+    - expression: >-
+        ((!has(object.spec.taints) && !has(oldObject.spec.taints)) ||
+          (has(object.spec.taints) && has(oldObject.spec.taints) && object.spec.taints == oldObject.spec.taints)) &&
+        ((!has(object.spec.podCIDRs) && !has(oldObject.spec.podCIDRs)) ||
+          (has(object.spec.podCIDRs) && has(oldObject.spec.podCIDRs) && object.spec.podCIDRs == oldObject.spec.podCIDRs)) &&
+        ((!has(object.spec.podCIDR) && !has(oldObject.spec.podCIDR)) ||
+          (has(object.spec.podCIDR) && has(oldObject.spec.podCIDR) && object.spec.podCIDR == oldObject.spec.podCIDR)) &&
+        ((!has(object.spec.providerID) && !has(oldObject.spec.providerID)) ||
+          (has(object.spec.providerID) && has(oldObject.spec.providerID) && object.spec.providerID == oldObject.spec.providerID)) &&
+        ((!has(object.spec.externalID) && !has(oldObject.spec.externalID)) ||
+          (has(object.spec.externalID) && has(oldObject.spec.externalID) && object.spec.externalID == oldObject.spec.externalID)) &&
+        ((!has(object.spec.configSource) && !has(oldObject.spec.configSource)) ||
+          (has(object.spec.configSource) && has(oldObject.spec.configSource) && object.spec.configSource == oldObject.spec.configSource))
+      message: The controller may change only spec.unschedulable in the Node spec.
+    - expression: object.status == oldObject.status
+      message: The controller may not change Node status.
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: {{ include "hostpath-pv-remediator.nodeAdmissionPolicyName" . }}
+  labels:
+    {{- include "hostpath-pv-remediator.labels" . | nindent 4 }}
+spec:
+  policyName: {{ include "hostpath-pv-remediator.nodeAdmissionPolicyName" . }}
+  validationActions:
+    - Deny
+{{- end }}

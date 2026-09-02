@@ -26,8 +26,8 @@ jobs:
         run: ./scripts/setup-helm-repos.sh
       - name: Login to GHCR
         env:
-          GHCR_USERNAME: ${{ secrets.GHCR_PULL_USERNAME || github.actor }}
-          GHCR_PASSWORD: ${{ secrets.GHCR_PULL_PASSWORD || github.token }}
+          GHCR_USERNAME: ${{ github.actor }}
+          GHCR_PASSWORD: ${{ github.token }}
         run: echo "${GHCR_PASSWORD}" | helm registry login ghcr.io -u "${GHCR_USERNAME}" --password-stdin
       - name: Configure Git Identity
         run: |

@@ -1,3 +1,6 @@
+imagePullSecrets:
+  - name: ghcr-auth
+
 command:
   - /bin/sh
   - -ec

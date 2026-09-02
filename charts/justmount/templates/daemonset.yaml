@@ -18,7 +18,7 @@ spec:
       hostNetwork: {{ .Values.node.hostNetwork }}
       containers:
         - name: node-driver-registrar
-          image: {{ .Values.registrar.image }}
+          image: "{{ .Values.registrar.image.repository }}:{{ .Values.registrar.image.tag }}"
           args:
             - --v={{ .Values.registrar.logLevel }}
             - --csi-address=/csi/csi.sock

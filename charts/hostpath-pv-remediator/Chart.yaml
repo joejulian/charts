@@ -4,7 +4,7 @@ apiVersion: v2
 name: hostpath-pv-remediator
 description: Controller packaging and a fail-closed repair Job security boundary for hostPath PV mount remediation
 type: application
-version: "0.1.1"
+version: "0.1.2"
 # renovate: image=git.julianfamily.org/joejulian/hostpath-pv-remediator
 appVersion: "v0.1.1"
 kubeVersion: ">=1.35.0-0"

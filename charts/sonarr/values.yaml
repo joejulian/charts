@@ -97,6 +97,7 @@ metrics:
       # -- image repository
       repository: ghcr.io/onedr0p/exportarr
       # -- image tag
+      # renovate: image=ghcr.io/onedr0p/exportarr
       tag: v2.3.0
       # -- image pull policy
       pullPolicy: IfNotPresent

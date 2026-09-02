@@ -1,4 +1,0 @@
-args:
-  - --source=empty
-  - --provider=inmemory
-  - --policy=upsert-only

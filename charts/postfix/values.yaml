@@ -14,7 +14,7 @@ saslauthd:
   image:
     repository: ghcr.io/joejulian/container-images/saslauthd
     # renovate: image=ghcr.io/joejulian/container-images/saslauthd
-    tag: 2.1.28-4
+    tag: 2.1.28-9
     pullPolicy: IfNotPresent
 
 imagePullSecrets: []

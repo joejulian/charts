@@ -21,6 +21,8 @@ jobs:
       - uses: azure/setup-helm@v5
       - name: Add Helm Repositories
         run: ./scripts/setup-helm-repos.sh
+      - name: Test Chart Versioning
+        run: ./scripts/test-chart-versioning.sh
       - name: Enforce Chart Versioning
         env:
           EVENT_NAME: ${{ github.event_name }}

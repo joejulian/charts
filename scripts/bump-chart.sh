@@ -3,6 +3,9 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
+# shellcheck source=scripts/chart-version-lib.sh
+source "${REPO_ROOT}/scripts/chart-version-lib.sh"
+
 chart_json_from_file() {
   local chart_file="$1"
   python3 "${REPO_ROOT}/scripts/chart_yaml.py" json --file "${chart_file}"
@@ -16,59 +19,6 @@ set_chart_version() {
   local chart_file="$1"
   local version="$2"
   python3 "${REPO_ROOT}/scripts/chart_yaml.py" set-version --file "${chart_file}" --version "${version}"
-}
-
-normalize_semver() {
-  local value="${1#v}"
-
-  if [[ "${value}" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
-    printf '%s %s %s\n' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}"
-    return 0
-  fi
-
-  return 1
-}
-
-version_change_level() {
-  local base="$1"
-  local current="$2"
-  local base_major base_minor base_patch current_major current_minor current_patch
-
-  if [[ "${base}" == "${current}" ]]; then
-    echo 0
-    return 0
-  fi
-
-  if ! read -r base_major base_minor base_patch <<<"$(normalize_semver "${base}")"; then
-    echo 1
-    return 0
-  fi
-
-  if ! read -r current_major current_minor current_patch <<<"$(normalize_semver "${current}")"; then
-    echo 1
-    return 0
-  fi
-
-  if (( current_major != base_major )); then
-    echo 3
-  elif (( current_minor != base_minor )); then
-    echo 2
-  elif (( current_patch != base_patch )); then
-    echo 1
-  else
-    echo 0
-  fi
-}
-
-max_level() {
-  local current="$1"
-  local candidate="$2"
-
-  if (( candidate > current )); then
-    echo "${candidate}"
-  else
-    echo "${current}"
-  fi
 }
 
 required_chart_bump_level() {
@@ -115,12 +65,17 @@ required_chart_bump_level() {
 main() {
   local chart_file chart_dir chart_name base_chart_version current_chart_version required_level current_chart
   local major minor patch
-  local -a changed_chart_files
+  local -a changed_chart_dirs
 
-  mapfile -t changed_chart_files < <(git -C "${REPO_ROOT}" diff --name-only -- charts/*/Chart.yaml)
+  mapfile -t changed_chart_dirs < <(
+    git -C "${REPO_ROOT}" diff --name-only -- charts \
+      | awk -F/ 'NF >= 2 {print $1 "/" $2}' \
+      | sort -u
+  )
 
-  for chart_file in "${changed_chart_files[@]}"; do
-    chart_dir="${REPO_ROOT}/$(dirname "${chart_file}")"
+  for chart_dir in "${changed_chart_dirs[@]}"; do
+    chart_file="${chart_dir}/Chart.yaml"
+    chart_dir="${REPO_ROOT}/${chart_dir}"
     chart_name="$(basename "${chart_dir}")"
 
     if ! git -C "${REPO_ROOT}" cat-file -e "HEAD:${chart_file}" 2>/dev/null; then
@@ -129,7 +84,7 @@ main() {
 
     required_level="$(required_chart_bump_level "${chart_file}")"
     if [[ "${required_level}" == "0" ]]; then
-      continue
+      required_level=1
     fi
 
     base_chart_version="$(git -C "${REPO_ROOT}" show "HEAD:${chart_file}" | chart_json_from_stdin | jq -r '.version')"

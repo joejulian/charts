@@ -22,8 +22,8 @@ jobs:
         run: ./scripts/setup-helm-repos.sh
       - name: Login to GHCR
         env:
-          GHCR_USERNAME: ${{ github.actor }}
-          GHCR_PASSWORD: ${{ github.token }}
+          GHCR_USERNAME: ${{ secrets.GHCR_PULL_USERNAME || github.actor }}
+          GHCR_PASSWORD: ${{ secrets.GHCR_PULL_PASSWORD || github.token }}
         run: echo "${GHCR_PASSWORD}" | helm registry login ghcr.io -u "${GHCR_USERNAME}" --password-stdin
       - name: Configure Git Identity
         run: |
@@ -35,7 +35,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ github.token }}
-          GHCR_PACKAGE_TOKEN: ${{ github.token }}
+          GHCR_PACKAGE_TOKEN: ${{ secrets.GHCR_PULL_PASSWORD || github.token }}
         run: ./scripts/release-charts.sh "${{ github.event.before }}" "${{ github.sha }}"
       - name: Repair Missing Releases For Changed Charts
         env:

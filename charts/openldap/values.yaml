@@ -16,6 +16,7 @@ image:
   repository: ghcr.io/joejulian/container-images/openldap
   tag: ""
   pullPolicy: Always
+imagePullSecrets: []
 service:
   resourceName: ""
   name: ldap

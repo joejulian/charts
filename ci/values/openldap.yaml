@@ -1,2 +1,5 @@
+imagePullSecrets:
+  - name: ghcr-auth
+
 persistence:
   enabled: false

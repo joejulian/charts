@@ -35,6 +35,10 @@ spec:
 {{ toYaml .Values.podLabels | indent 8 }}
         {{- end }}
     spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       initContainers:
         - name: init-data
           image: {{ .Values.initContainer.image }}

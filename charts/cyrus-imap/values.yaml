@@ -95,7 +95,7 @@ saslauthd:
     repository: ghcr.io/joejulian/container-images/saslauthd
     pullPolicy: IfNotPresent
     # renovate: image=ghcr.io/joejulian/container-images/saslauthd
-    tag: 2.1.28-4
+    tag: 2.1.28-9
   command:
     - fsyslog
   args:

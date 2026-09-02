@@ -21,6 +21,8 @@ jobs:
       - uses: azure/setup-helm@v5
       - name: Add Helm Repositories
         run: ./scripts/setup-helm-repos.sh
+      - name: Test Chart Versioning
+        run: ./scripts/test-chart-versioning.sh
       - name: Enforce Chart Versioning
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -83,6 +85,8 @@ jobs:
       - name: Test Charts
         if: steps.charts.outputs.chart_count != '0'
         env:
+          GHCR_PULL_PASSWORD: ${{ secrets.GHCR_PULL_PASSWORD }}
+          GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
           ONSTAR2MQTT_TEST_SECRET: ${{ secrets.ONSTAR2MQTT_TEST_SECRET }}
           CHARTS: ${{ steps.charts.outputs.charts }}
         run: |

@@ -5,6 +5,9 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BASE_REF="${1:-}"
 HEAD_REF="${2:-HEAD}"
 
+# shellcheck source=scripts/chart-version-lib.sh
+source "${REPO_ROOT}/scripts/chart-version-lib.sh"
+
 chart_json_from_file() {
   local chart_file="$1"
   python3 "${REPO_ROOT}/scripts/chart_yaml.py" json --file "${chart_file}"
@@ -24,66 +27,14 @@ chart_yaml_value() {
   chart_json_from_ref "${ref}" "${chart_dir}" | jq -r --arg key "${key}" '.[$key]'
 }
 
-normalize_semver() {
-  local value="${1#v}"
-
-  if [[ "${value}" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
-    printf '%s %s %s\n' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}"
-    return 0
-  fi
-
-  return 1
-}
-
-version_change_level() {
-  local base="$1"
-  local current="$2"
-  local base_major base_minor base_patch current_major current_minor current_patch
-
-  if [[ "${base}" == "${current}" ]]; then
-    echo 0
-    return 0
-  fi
-
-  if ! read -r base_major base_minor base_patch <<<"$(normalize_semver "${base}")"; then
-    echo 1
-    return 0
-  fi
-
-  if ! read -r current_major current_minor current_patch <<<"$(normalize_semver "${current}")"; then
-    echo 1
-    return 0
-  fi
-
-  if (( current_major != base_major )); then
-    echo 3
-  elif (( current_minor != base_minor )); then
-    echo 2
-  elif (( current_patch != base_patch )); then
-    echo 1
-  else
-    echo 0
-  fi
-}
-
-max_level() {
-  local current="$1"
-  local candidate="$2"
-
-  if (( candidate > current )); then
-    echo "${candidate}"
-  else
-    echo "${current}"
-  fi
-}
-
 required_chart_bump_level() {
   local chart_dir="$1"
+  local relative_chart_dir="${chart_dir#"${REPO_ROOT}"/}"
   local base_chart head_chart dep_name dep_version base_app_version head_app_version level
   declare -A base_deps=()
   declare -A head_deps=()
 
-  base_chart="$(chart_json_from_ref "${BASE_REF}" "${chart_dir#${REPO_ROOT}/}")"
+  base_chart="$(chart_json_from_ref "${BASE_REF}" "${relative_chart_dir}")"
   head_chart="$(chart_json_from_file "${chart_dir}/Chart.yaml")"
   base_app_version="$(jq -r '.appVersion' <<<"${base_chart}")"
   head_app_version="$(jq -r '.appVersion' <<<"${head_chart}")"
@@ -125,7 +76,7 @@ version_gt() {
 }
 
 main() {
-  local chart_dir chart_name base_chart_version head_chart_version required_level head_chart
+  local chart_dir relative_chart_dir chart_name base_chart_version head_chart_version required_level head_chart
   local base_chart_major base_chart_minor base_chart_patch head_chart_major head_chart_minor head_chart_patch
   local failed=0
   local -a changed_charts
@@ -138,23 +89,24 @@ main() {
   mapfile -t changed_charts < <("${REPO_ROOT}/scripts/changed-charts.sh" "${BASE_REF}" "${HEAD_REF}")
 
   for chart_dir in "${changed_charts[@]}"; do
+    relative_chart_dir="${chart_dir#"${REPO_ROOT}"/}"
     chart_name="$(basename "${chart_dir}")"
 
-    if ! git -C "${REPO_ROOT}" cat-file -e "${BASE_REF}:${chart_dir#${REPO_ROOT}/}/Chart.yaml" 2>/dev/null; then
+    if ! git -C "${REPO_ROOT}" cat-file -e "${BASE_REF}:${relative_chart_dir}/Chart.yaml" 2>/dev/null; then
       continue
     fi
 
     required_level="$(required_chart_bump_level "${chart_dir}")"
     if [[ "${required_level}" == "0" ]]; then
-      continue
+      required_level=1
     fi
 
-    base_chart_version="$(chart_yaml_value "${BASE_REF}" "${chart_dir#${REPO_ROOT}/}" version)"
+    base_chart_version="$(chart_yaml_value "${BASE_REF}" "${relative_chart_dir}" version)"
     head_chart="$(chart_json_from_file "${chart_dir}/Chart.yaml")"
     head_chart_version="$(jq -r '.version' <<<"${head_chart}")"
 
     if ! version_gt "${head_chart_version}" "${base_chart_version}"; then
-      echo "Chart ${chart_name}: Chart.yaml dependency or appVersion changed but chart version did not increase (${base_chart_version} -> ${head_chart_version})."
+      echo "Chart ${chart_name}: packaged chart content changed but chart version did not increase (${base_chart_version} -> ${head_chart_version})."
       failed=1
       continue
     fi

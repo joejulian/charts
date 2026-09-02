@@ -41,7 +41,7 @@ spec:
       {{- end }}
       initContainers:
         - name: init-data
-          image: {{ .Values.initContainer.image }}
+          image: "{{ .Values.initContainer.image.repository }}:{{ .Values.initContainer.image.tag }}"
           command:
             - sh
             - -c

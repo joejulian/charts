@@ -83,7 +83,7 @@ spec:
               backup="${migration_dir}/olcDatabase={1}mdb.pre-openldap-2.6.13.ldif"
               marker="${migration_dir}/openldap-2.6.13-indexes-rebuilt"
               if [ -r "${backup}" ] && [ ! -e "${marker}" ]; then
-                slapindex -F "${data_root}/slapd.d" -u ldap -g ldap
+                setpriv --reuid=ldap --regid=ldap --init-groups slapindex -F "${data_root}/slapd.d"
                 touch "${marker}"
                 chown 439:439 "${marker}"
               fi

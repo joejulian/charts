@@ -23,7 +23,7 @@ assert_equal \
   "oci://ghcr.io/joejulian/helm-charts" \
   "$(chart_oci_repository mosquitto)"
 assert_equal \
-  "oci://ghcr.io/joejulian/charts" \
+  "oci://ghcr.io/joejulian/helm-charts" \
   "$(chart_oci_repository sonarr)"
 assert_equal \
   "helm-charts" \
@@ -32,10 +32,16 @@ assert_equal \
 GITHUB_REPOSITORY_OWNER=heist-crew
 export GITHUB_REPOSITORY_OWNER
 assert_equal \
-  "oci://ghcr.io/heist-crew/charts" \
+  "oci://ghcr.io/heist-crew/helm-charts" \
   "$(chart_oci_repository vault)"
 assert_equal \
-  "charts" \
+  "helm-charts" \
   "$(chart_package_prefix "$(chart_oci_repository vault)")"
+
+CHART_OCI_PACKAGE_PREFIX=casino-charts
+export CHART_OCI_PACKAGE_PREFIX
+assert_equal \
+  "oci://ghcr.io/heist-crew/casino-charts" \
+  "$(chart_oci_repository vault)"
 
 echo "Chart release routing tests passed"

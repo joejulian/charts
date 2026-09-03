@@ -1,17 +1,10 @@
 #!/usr/bin/env bash
 
 chart_oci_repository() {
-  local chart_name="$1"
   local owner="${GITHUB_REPOSITORY_OWNER:-joejulian}"
+  local package_prefix="${CHART_OCI_PACKAGE_PREFIX:-helm-charts}"
 
-  case "${chart_name}" in
-    justmount | mosquitto)
-      printf 'oci://ghcr.io/%s/helm-charts\n' "${owner}"
-      ;;
-    *)
-      printf 'oci://ghcr.io/%s/charts\n' "${owner}"
-      ;;
-  esac
+  printf 'oci://ghcr.io/%s/%s\n' "${owner}" "${package_prefix}"
 }
 
 chart_package_prefix() {

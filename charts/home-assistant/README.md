@@ -1,6 +1,6 @@
 # home-assistant
 
-![Version: 3.3.1](https://img.shields.io/badge/Version-3.3.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2026.9.0](https://img.shields.io/badge/AppVersion-2026.9.0-informational?style=flat-square)
+![Version: 3.4.0](https://img.shields.io/badge/Version-3.4.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2026.9.0](https://img.shields.io/badge/AppVersion-2026.9.0-informational?style=flat-square)
 
 Open source home automation that puts local control and privacy first
 

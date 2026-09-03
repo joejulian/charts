@@ -89,3 +89,13 @@ if ! grep -q 'packaged chart content changed' "${tmp_root}/guard-output"; then
   sed -n '1,120p' "${tmp_root}/guard-output" >&2
   fail "chart version guard failed without the expected diagnostic"
 fi
+
+any_bump_root="$(new_fixture any-bump 1.2.3 3.5.7)"
+any_bump_base="$(git -C "${any_bump_root}" rev-parse HEAD)"
+sed -i 's/appVersion: 1\.2\.3/appVersion: 2.0.0/' "${any_bump_root}/charts/heist-vault/Chart.yaml"
+sed -i 's/version: 3\.5\.7/version: 3.5.8/' "${any_bump_root}/charts/heist-vault/Chart.yaml"
+git -C "${any_bump_root}" add charts/heist-vault/Chart.yaml
+git -C "${any_bump_root}" commit -qm "test: update the Bellagio vault chart"
+if ! bash "${any_bump_root}/scripts/check-chart-version-bumps.sh" "${any_bump_base}" HEAD; then
+  fail "chart version guard rejected a valid chart version increase"
+fi

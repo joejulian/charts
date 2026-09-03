@@ -2,19 +2,21 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-OWNER="${GITHUB_REPOSITORY_OWNER:-joejulian}"
-OCI_REPO="oci://ghcr.io/${OWNER}/charts"
 DIST_DIR="${REPO_ROOT}/.dist"
 TMP_ROOT="/tmp/jjulian/chart-release-repair"
+
+# shellcheck source=scripts/chart-release-lib.sh
+source "${REPO_ROOT}/scripts/chart-release-lib.sh"
 
 mkdir -p "${DIST_DIR}" "${TMP_ROOT}"
 "${REPO_ROOT}/scripts/setup-helm-repos.sh"
 
 chart_version_published() {
-  local chart_name="$1"
-  local version="$2"
+  local repository="$1"
+  local chart_name="$2"
+  local version="$3"
 
-  helm show chart "${OCI_REPO}/${chart_name}" --version "${version}" >/dev/null 2>&1
+  helm show chart "${repository}/${chart_name}" --version "${version}" >/dev/null 2>&1
 }
 
 github_release_exists() {
@@ -59,24 +61,31 @@ ensure_version() {
   local version="$2"
   local ref="$3"
   local tag="${chart_name}-${version}"
-  local package chart_dir cleanup_dir
+  local package chart_dir cleanup_dir repository package_prefix
 
   package="${DIST_DIR}/${chart_name}-${version}.tgz"
   chart_dir="${REPO_ROOT}/charts/${chart_name}"
   cleanup_dir=""
+  repository="$(chart_oci_repository "${chart_name}")"
+  package_prefix="$(chart_package_prefix "${repository}")"
 
   if [[ "${ref}" != "HEAD" ]]; then
     chart_dir="$(extract_chart_at_ref "${ref}" "${chart_name}")"
     cleanup_dir="$(dirname "$(dirname "${chart_dir}")")"
   fi
 
-  if ! chart_version_published "${chart_name}" "${version}" || ! github_release_exists "${tag}"; then
+  if ! chart_version_published "${repository}" "${chart_name}" "${version}" || ! github_release_exists "${tag}"; then
     package="$(package_chart "${chart_dir}")"
   fi
 
-  if ! chart_version_published "${chart_name}" "${version}"; then
+  if ! chart_version_published "${repository}" "${chart_name}" "${version}"; then
     echo "Publishing ${chart_name} ${version} from ${ref}"
-    helm push "${package}" "${OCI_REPO}"
+    helm push "${package}" "${repository}"
+    python3 "${REPO_ROOT}/scripts/verify-chart-package-public.py" \
+      "${chart_name}" \
+      --owner "${GITHUB_REPOSITORY_OWNER:-joejulian}" \
+      --package-prefix "${package_prefix}" \
+      --token "${GHCR_PACKAGE_TOKEN}"
   fi
 
   if ! git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
@@ -103,7 +112,7 @@ collect_versions() {
   local ref version
 
   while IFS= read -r ref; do
-    version="${ref#${chart_name}-}"
+    version="${ref#"${chart_name}"-}"
     refs["${version}"]="${ref}"
   done < <(git -C "${REPO_ROOT}" tag -l "${chart_name}-*")
 
@@ -143,7 +152,7 @@ resolve_charts() {
 main() {
   local mode="all"
   local -a mode_args=()
-  local chart_dir chart_name line version ref
+  local chart_dir chart_name version ref
 
   if [[ $# -gt 0 ]]; then
     case "$1" in

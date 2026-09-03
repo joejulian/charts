@@ -2,18 +2,20 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-OWNER="${GITHUB_REPOSITORY_OWNER:-joejulian}"
-OCI_REPO="oci://ghcr.io/${OWNER}/charts"
 DIST_DIR="${REPO_ROOT}/.dist"
+
+# shellcheck source=scripts/chart-release-lib.sh
+source "${REPO_ROOT}/scripts/chart-release-lib.sh"
 
 mkdir -p "${DIST_DIR}"
 "${REPO_ROOT}/scripts/setup-helm-repos.sh"
 
 chart_version_published() {
-  local chart_name="$1"
-  local version="$2"
+  local repository="$1"
+  local chart_name="$2"
+  local version="$3"
 
-  helm show chart "${OCI_REPO}/${chart_name}" --version "${version}" >/dev/null 2>&1
+  helm show chart "${repository}/${chart_name}" --version "${version}" >/dev/null 2>&1
 }
 
 github_release_exists() {
@@ -30,14 +32,16 @@ remote_tag_exists() {
 
 release_chart() {
   local chart_dir="$1"
-  local chart_name version package tag needs_package
+  local chart_name version package tag needs_package repository package_prefix
 
   chart_name="$(basename "${chart_dir}")"
+  repository="$(chart_oci_repository "${chart_name}")"
+  package_prefix="$(chart_package_prefix "${repository}")"
   version="$(helm show chart "${chart_dir}" | awk '/^version:/ {print $2}')"
   tag="${chart_name}-${version}"
   needs_package=1
 
-  if chart_version_published "${chart_name}" "${version}"; then
+  if chart_version_published "${repository}" "${chart_name}" "${version}"; then
     echo "Chart ${chart_name} ${version} is already published"
     needs_package=0
   fi
@@ -53,9 +57,11 @@ release_chart() {
   fi
 
   if [[ "${needs_package}" -eq 1 ]]; then
-    helm push "${package}" "${OCI_REPO}"
+    helm push "${package}" "${repository}"
     python3 "${REPO_ROOT}/scripts/verify-chart-package-public.py" \
       "${chart_name}" \
+      --owner "${GITHUB_REPOSITORY_OWNER:-joejulian}" \
+      --package-prefix "${package_prefix}" \
       --token "${GHCR_PACKAGE_TOKEN}"
   fi
 

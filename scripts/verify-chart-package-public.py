@@ -22,12 +22,12 @@ def github_request(url: str, token: str) -> dict:
         return json.load(resp)
 
 
-def anonymous_token_status(chart_name: str) -> int:
+def anonymous_token_status(owner: str, package_prefix: str, chart_name: str) -> int:
     url = (
         "https://ghcr.io/token?"
         + urllib.parse.urlencode(
             {
-                "scope": f"repository:joejulian/charts/{chart_name}:pull",
+                "scope": f"repository:{owner}/{package_prefix}/{chart_name}:pull",
                 "service": "ghcr.io",
             }
         )
@@ -43,12 +43,15 @@ def anonymous_token_status(chart_name: str) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("chart_name")
+    parser.add_argument("--owner", default="joejulian")
+    parser.add_argument("--package-prefix", default="charts")
     parser.add_argument("--token", required=True)
     parser.add_argument("--retries", type=int, default=30)
     parser.add_argument("--sleep", type=int, default=10)
     args = parser.parse_args()
 
-    package_name = urllib.parse.quote(f"charts/{args.chart_name}", safe="")
+    package_path = f"{args.package_prefix}/{args.chart_name}"
+    package_name = urllib.parse.quote(package_path, safe="")
     package_url = f"https://api.github.com/user/packages/container/{package_name}"
 
     for attempt in range(1, args.retries + 1):
@@ -58,7 +61,7 @@ def main() -> int:
             status = exc.code
             body = exc.read().decode()
             print(
-                f"Package lookup failed for charts/{args.chart_name} "
+                f"Package lookup failed for {package_path} "
                 f"(attempt {attempt}/{args.retries}): HTTP {status}: {body}",
                 file=sys.stderr,
             )
@@ -69,17 +72,19 @@ def main() -> int:
 
         visibility = package.get("visibility")
         repo_full_name = (package.get("repository") or {}).get("full_name")
-        token_status = anonymous_token_status(args.chart_name)
+        token_status = anonymous_token_status(
+            args.owner, args.package_prefix, args.chart_name
+        )
 
         if visibility == "public" and token_status == 200:
             print(
-                f"Verified charts/{args.chart_name} is public and anonymously "
+                f"Verified {package_path} is public and anonymously "
                 f"readable. Linked repository: {repo_full_name!r}."
             )
             return 0
 
         print(
-            f"charts/{args.chart_name} not ready yet "
+            f"{package_path} not ready yet "
             f"(attempt {attempt}/{args.retries}): "
             f"visibility={visibility!r} repo={repo_full_name!r} "
             f"anonymous_token_status={token_status}",

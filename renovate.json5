@@ -23,6 +23,12 @@
       automerge: true,
       addLabels: ["automerge"],
     },
+    {
+      matchManagers: ["helmv3"],
+      matchUpdateTypes: ["minor", "patch"],
+      automerge: true,
+      addLabels: ["automerge"],
+    },
   ],
   customManagers: [
     {

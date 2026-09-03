@@ -9,7 +9,8 @@ metadata:
 spec:
   containers:
     - name: tcp-check
-      image: busybox
+      # renovate: image=docker.io/library/busybox
+      image: docker.io/library/busybox:1.38.0
       command: ['sh', '-ec']
       args:
         - nc -z -w 5 {{ include "mosquitto.fullname" . }} {{ .Values.service.ports.mqtt.port }}

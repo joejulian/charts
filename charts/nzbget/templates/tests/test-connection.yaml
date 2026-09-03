@@ -8,7 +8,8 @@ metadata:
 spec:
   containers:
     - name: wget
-      image: busybox
+      # renovate: image=docker.io/library/busybox
+      image: docker.io/library/busybox:1.38.0
       command: ["sh", "-ec"]
       args:
         - wget -S -O /dev/null http://{{ .Release.Name }}-service:6789/ 2>&1 | grep -q '401 Unauthorized'

@@ -41,6 +41,14 @@
       ],
       datasourceTemplate: "docker",
     },
+    {
+      customType: "regex",
+      managerFilePatterns: ["/(^|/)charts\\/[^/]+\\/templates\\/.+\\.ya?ml$/"],
+      matchStrings: [
+        "# renovate: image=(?<depName>[^\\s]+)\\n\\s*image:\\s*[\"']?[^\\s\"']+:(?<currentValue>[^\\s\"']+)[\"']?",
+      ],
+      datasourceTemplate: "docker",
+    },
   ],
   postUpgradeTasks: {
     commands: [

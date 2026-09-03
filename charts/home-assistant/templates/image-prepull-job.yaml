@@ -1,0 +1,70 @@
+{{- if and .Values.imagePrePull.enabled .Release.IsUpgrade -}}
+{{- $image := deepCopy (.Values.controllers.main.containers.main.image | default dict) -}}
+{{- $tag := default "" (get $image "tag") -}}
+{{- $digest := default "" (get $image "digest") -}}
+{{- if and (empty $tag) (empty $digest) -}}
+  {{- $_ := set $image "tag" .Chart.AppVersion -}}
+{{- end -}}
+{{- $pod := .Values.controllers.main.pod | default dict -}}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ printf "%s-image-prepull" .Release.Name | trunc 63 | trimSuffix "-" }}
+  labels:
+    helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
+    app.kubernetes.io/name: {{ .Release.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/component: image-prepull
+  annotations:
+    "helm.sh/hook": pre-upgrade
+    "helm.sh/hook-weight": "-10"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  activeDeadlineSeconds: {{ .Values.imagePrePull.activeDeadlineSeconds }}
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Release.Name }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: image-prepull
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      restartPolicy: Never
+      terminationGracePeriodSeconds: 5
+      {{- with (get $pod "priorityClassName") }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      {{- with (get $pod "runtimeClassName") }}
+      runtimeClassName: {{ . }}
+      {{- end }}
+      {{- with (get $pod "schedulerName") }}
+      schedulerName: {{ . }}
+      {{- end }}
+      {{- with (get $pod "imagePullSecrets") }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with (get $pod "nodeSelector") }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with (get $pod "affinity") }}
+      affinity:
+        {{- tpl (toYaml .) $ | nindent 8 }}
+      {{- end }}
+      {{- with (get $pod "tolerations") }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: image-prepull
+          image: {{ include "bjw-s.common.lib.imageSpecificationToImage" (dict "rootContext" $ "imageSpec" $image) | quote }}
+          imagePullPolicy: {{ default "IfNotPresent" (get $image "pullPolicy") }}
+          command:
+            {{- toYaml .Values.imagePrePull.command | nindent 12 }}
+{{- end }}

@@ -1,0 +1,17 @@
+imagePrePull:
+  enabled: true
+
+controllers:
+  main:
+    pod:
+      nodeSelector:
+        example.invalid/usb-node: "true"
+      tolerations:
+        - key: example.invalid/usb-node
+          operator: Equal
+          value: "true"
+    containers:
+      main:
+        image:
+          tag: heist-movie
+          digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

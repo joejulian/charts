@@ -1,7 +1,7 @@
 annotations:
   artifacthub.io/changes: |
-    - kind: changed
-      description: use template to generate README.md
+    - kind: added
+      description: optionally pre-pull and unpack the next image before an upgrade
   org.opencontainers.image.source: https://github.com/joejulian/charts
 apiVersion: v2
 # renovate: image=ghcr.io/joejulian/container-images/home-assistant
@@ -25,4 +25,4 @@ name: home-assistant
 sources:
 - https://github.com/home-assistant/core
 type: application
-version: "3.3.0"
+version: "3.3.1"

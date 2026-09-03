@@ -11,11 +11,15 @@ maxOpenFiles: 1024
 args: []
 dataMountPath: /data
 initContainer:
-  image: ghcr.io/containerd/busybox:1.36
+  image:
+    repository: docker.io/library/busybox
+    # renovate: image=docker.io/library/busybox
+    tag: "1.38.0"
 image:
-  repository: registry.gitlab.com/joejulian/image-openldap
+  repository: ghcr.io/joejulian/container-images/openldap
   tag: ""
   pullPolicy: Always
+imagePullSecrets: []
 service:
   resourceName: ""
   name: ldap

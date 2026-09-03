@@ -85,8 +85,6 @@ jobs:
       - name: Test Charts
         if: steps.charts.outputs.chart_count != '0'
         env:
-          GHCR_PULL_PASSWORD: ${{ secrets.GHCR_PULL_PASSWORD }}
-          GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
           ONSTAR2MQTT_TEST_SECRET: ${{ secrets.ONSTAR2MQTT_TEST_SECRET }}
           CHARTS: ${{ steps.charts.outputs.charts }}
         run: |

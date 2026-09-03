@@ -33,7 +33,7 @@ spec:
       {{- if .Values.initContainer.enabled }}
       initContainers:
         - name: init
-          image: {{ .Values.initContainer.image }}
+          image: "{{ .Values.initContainer.image.repository }}:{{ .Values.initContainer.image.tag }}"
           command:
             {{- toYaml .Values.initContainer.command | nindent 12 }}
           volumeMounts:

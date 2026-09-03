@@ -81,7 +81,10 @@ mainContainer:
 
 initContainer:
   enabled: true
-  image: ghcr.io/containerd/busybox:1.36
+  image:
+    repository: docker.io/library/busybox
+    # renovate: image=docker.io/library/busybox
+    tag: "1.38.0"
   command:
     - sh
     - -c

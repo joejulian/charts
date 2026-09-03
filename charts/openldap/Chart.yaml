@@ -2,15 +2,15 @@ annotations:
   org.opencontainers.image.source: https://github.com/joejulian/charts
 apiVersion: v2
 name: openldap
-version: 0.0.4
-# renovate: image=registry.gitlab.com/joejulian/image-openldap
-appVersion: "latest"
+version: 0.0.5
+# renovate: image=ghcr.io/joejulian/container-images/openldap
+appVersion: "2.6.13-1"
 description: OpenLDAP chart
 keywords:
 - openldap
 home: https://github.com/joejulian/charts/tree/master/charts/openldap
 sources:
-- https://gitlab.com/joejulian/chart-openldap
+- https://github.com/joejulian/container-images
 maintainers:
 - name: Joe Julian
   email: me@joejulian.name

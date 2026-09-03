@@ -25,15 +25,17 @@ spec:
           image: "{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
-            - nzbget
-            - --configfile
-            - /mnt/config/nzbget.conf
-            - --server
-            - --option
+            - /app/nzbget/nzbget
+          args:
+            - -s
+            - -c
+            - /config/nzbget.conf
+            - -o
             - OutputMode=log
           volumeMounts:
             - name: config-volume
-              mountPath: /mnt/config
+              mountPath: /config
+              readOnly: true
             - name: media-volume
               mountPath: {{ .Values.nzbget.mainDir }}
           livenessProbe:

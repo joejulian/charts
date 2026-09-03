@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: ghcr.io/joejulian/unifi-cam-proxy
+  repository: ghcr.io/joejulian/container-images/unifi-cam-proxy
   pullPolicy: IfNotPresent
   tag: ""
 

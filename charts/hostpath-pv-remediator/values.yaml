@@ -124,6 +124,7 @@ terminationGracePeriodSeconds: 30
 test:
   image:
     repository: curlimages/curl
-    tag: "8.21.0"
+    # renovate: image=curlimages/curl
+    tag: "8.22.0"
     digest: ""
     pullPolicy: IfNotPresent

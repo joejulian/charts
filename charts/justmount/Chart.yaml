@@ -12,4 +12,4 @@ name: justmount
 sources:
 - https://github.com/joejulian/csi-justmount
 type: application
-version: "0.3.19"
+version: "0.3.20"

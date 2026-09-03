@@ -26,4 +26,4 @@ sources:
 - https://github.com/home-operations/containers
 - https://github.com/pree/helm-charts
 type: application
-version: 1.28.2
+version: 1.28.3

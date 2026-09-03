@@ -123,8 +123,8 @@ terminationGracePeriodSeconds: 30
 
 test:
   image:
-    repository: curlimages/curl
-    # renovate: image=curlimages/curl
+    repository: docker.io/curlimages/curl
+    # renovate: image=docker.io/curlimages/curl
     tag: "8.22.0"
     digest: ""
     pullPolicy: IfNotPresent

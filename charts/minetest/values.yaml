@@ -20,8 +20,8 @@ image:
   pullPolicy: IfNotPresent
 initContainer:
   image:
-    repository: alpine
-    # renovate: image=alpine
+    repository: docker.io/library/alpine
+    # renovate: image=docker.io/library/alpine
     tag: 3.24.1
     pullPolicy: IfNotPresent
 

@@ -5,6 +5,9 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BASE_REF="${1:-}"
 HEAD_REF="${2:-HEAD}"
 
+# shellcheck source=scripts/chart-version-lib.sh
+source "${REPO_ROOT}/scripts/chart-version-lib.sh"
+
 chart_json_from_file() {
   local chart_file="$1"
   python3 "${REPO_ROOT}/scripts/chart_yaml.py" json --file "${chart_file}"
@@ -24,6 +27,47 @@ chart_yaml_value() {
   chart_json_from_ref "${ref}" "${chart_dir}" | jq -r --arg key "${key}" '.[$key]'
 }
 
+required_chart_bump_level() {
+  local chart_dir="$1"
+  local relative_chart_dir="${chart_dir#"${REPO_ROOT}"/}"
+  local base_chart head_chart dep_name dep_version base_app_version head_app_version level
+  declare -A base_deps=()
+  declare -A head_deps=()
+
+  base_chart="$(chart_json_from_ref "${BASE_REF}" "${relative_chart_dir}")"
+  head_chart="$(chart_json_from_file "${chart_dir}/Chart.yaml")"
+  base_app_version="$(jq -r '.appVersion' <<<"${base_chart}")"
+  head_app_version="$(jq -r '.appVersion' <<<"${head_chart}")"
+  level="$(version_change_level "${base_app_version}" "${head_app_version}")"
+
+  while IFS=$'\t' read -r dep_name dep_version; do
+    [[ -n "${dep_name}" ]] || continue
+    base_deps["${dep_name}"]="${dep_version}"
+  done < <(jq -r '.dependencies | to_entries[]? | [.key, .value] | @tsv' <<<"${base_chart}")
+
+  while IFS=$'\t' read -r dep_name dep_version; do
+    [[ -n "${dep_name}" ]] || continue
+    head_deps["${dep_name}"]="${dep_version}"
+  done < <(jq -r '.dependencies | to_entries[]? | [.key, .value] | @tsv' <<<"${head_chart}")
+
+  for dep_name in "${!base_deps[@]}"; do
+    if [[ ! -v "head_deps[${dep_name}]" ]]; then
+      level="$(max_level "${level}" 1)"
+      continue
+    fi
+
+    level="$(max_level "${level}" "$(version_change_level "${base_deps[${dep_name}]}" "${head_deps[${dep_name}]}")")"
+  done
+
+  for dep_name in "${!head_deps[@]}"; do
+    if [[ ! -v "base_deps[${dep_name}]" ]]; then
+      level="$(max_level "${level}" 1)"
+    fi
+  done
+
+  echo "${level}"
+}
+
 version_gt() {
   local left="$1"
   local right="$2"
@@ -32,7 +76,7 @@ version_gt() {
 }
 
 main() {
-  local chart_dir relative_chart_dir chart_name base_chart_version head_chart_version head_chart
+  local chart_dir relative_chart_dir chart_name base_chart_version head_chart_version required_level actual_level head_chart
   local failed=0
   local -a changed_charts
 
@@ -51,6 +95,7 @@ main() {
       continue
     fi
 
+    required_level="$(required_chart_bump_level "${chart_dir}")"
     base_chart_version="$(chart_yaml_value "${BASE_REF}" "${relative_chart_dir}" version)"
     head_chart="$(chart_json_from_file "${chart_dir}/Chart.yaml")"
     head_chart_version="$(jq -r '.version' <<<"${head_chart}")"
@@ -59,6 +104,16 @@ main() {
       echo "Chart ${chart_name}: packaged chart content changed but chart version did not increase (${base_chart_version} -> ${head_chart_version})."
       failed=1
       continue
+    fi
+
+    if (( required_level > 0 )) && \
+      normalize_semver "${base_chart_version}" >/dev/null && \
+      normalize_semver "${head_chart_version}" >/dev/null; then
+      actual_level="$(version_change_level "${base_chart_version}" "${head_chart_version}")"
+      if (( actual_level != required_level )); then
+        echo "Chart ${chart_name}: appVersion or dependency changes require a level ${required_level} chart bump (${base_chart_version} -> ${head_chart_version})."
+        failed=1
+      fi
     fi
   done
 

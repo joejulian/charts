@@ -1,6 +1,6 @@
 # Default values for mosquitto.
 image:
-  repository: eclipse-mosquitto
+  repository: docker.io/library/eclipse-mosquitto
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""

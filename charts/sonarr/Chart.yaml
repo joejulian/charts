@@ -9,7 +9,7 @@ appVersion: 4.0.19.3009
 dependencies:
 - name: common
   repository: https://bjw-s-labs.github.io/helm-charts/
-  version: 1.5.1
+  version: 5.1.0
 description: Smart PVR for newsgroup and bittorrent users
 home: https://github.com/joejulian/charts/tree/main/charts/sonarr
 icon: https://raw.githubusercontent.com/Sonarr/Sonarr/develop/Logo/512.png
@@ -26,4 +26,4 @@ sources:
 - https://github.com/home-operations/containers
 - https://github.com/pree/helm-charts
 type: application
-version: 1.12.2
+version: "2.0.0"

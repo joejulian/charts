@@ -9,7 +9,7 @@ appVersion: 6.4.3.10645
 dependencies:
 - name: common
   repository: https://bjw-s-labs.github.io/helm-charts/
-  version: 1.5.1
+  version: 5.1.0
 description: A fork of Sonarr to work with movies à la Couchpotato
 home: https://github.com/joejulian/charts/tree/main/charts/radarr
 icon: https://raw.githubusercontent.com/Radarr/Radarr/develop/Logo/512.png
@@ -26,4 +26,4 @@ sources:
 - https://github.com/home-operations/containers
 - https://github.com/pree/helm-charts
 type: application
-version: 1.28.3
+version: "2.0.0"

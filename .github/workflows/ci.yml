@@ -23,6 +23,8 @@ jobs:
         run: ./scripts/setup-helm-repos.sh
       - name: Test Chart Versioning
         run: ./scripts/test-chart-versioning.sh
+      - name: Test Chart Release Routing
+        run: ./scripts/test-chart-release-routing.sh
       - name: Enforce Chart Versioning
         env:
           EVENT_NAME: ${{ github.event_name }}

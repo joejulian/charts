@@ -39,6 +39,7 @@ jobs:
         env:
           CHARTS: ${{ inputs.charts }}
           GH_TOKEN: ${{ github.token }}
+          GHCR_PACKAGE_TOKEN: ${{ github.token }}
         run: |
           if [[ -n "${CHARTS}" ]]; then
             # shellcheck disable=SC2206

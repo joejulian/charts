@@ -44,8 +44,30 @@ spec:
           image: "{{ .Values.initContainer.image.repository }}:{{ .Values.initContainer.image.tag }}"
           command:
             - sh
-            - -c
-            - mkdir -p {{ .Values.dataMountPath }}/slapd.d {{ .Values.dataMountPath }}/data && chown -R 439:439 {{ .Values.dataMountPath }}/slapd.d {{ .Values.dataMountPath }}/data
+            - -ec
+            - |
+              data_root={{ .Values.dataMountPath | quote }}
+              mkdir -p "${data_root}/slapd.d" "${data_root}/data"
+              legacy_config="${data_root}/slapd.d/cn=config/olcDatabase={1}mdb.ldif"
+              if [ -r "${legacy_config}" ] && grep -Eq 'olcBdbConfig|^(olcDbCacheSize|olcDbConfig|olcDbDirtyRead|olcDbIDLcacheSize|olcDbLinearIndex|olcDbShmKey|olcDbCacheFree|olcDbDNcacheSize):' "${legacy_config}"; then
+                migration_dir="${data_root}/migrations"
+                backup="${migration_dir}/olcDatabase={1}mdb.pre-openldap-2.6.13.ldif"
+                work="${legacy_config}.migrating"
+                mkdir -p "${migration_dir}"
+                if [ ! -e "${backup}" ]; then
+                  cp -p "${legacy_config}" "${backup}"
+                fi
+                cp -p "${legacy_config}" "${work}"
+                sed -i -E 's/^(objectClass|structuralObjectClass): olcBdbConfig$/\1: olcMdbConfig/; /^(olcDbCacheSize|olcDbConfig|olcDbDirtyRead|olcDbIDLcacheSize|olcDbLinearIndex|olcDbShmKey|olcDbCacheFree|olcDbDNcacheSize):/d' "${work}"
+                checksum="$(tail -n +3 "${work}" | crc32)"
+                sed -i -E "2s/^# CRC32 [0-9a-fA-F]+$/# CRC32 ${checksum}/" "${work}"
+                grep -q "^# CRC32 ${checksum}$" "${work}"
+                mv "${work}" "${legacy_config}"
+              fi
+              chown -R 439:439 "${data_root}/slapd.d" "${data_root}/data"
+              if [ -d "${data_root}/migrations" ]; then
+                chown -R 439:439 "${data_root}/migrations"
+              fi
           volumeMounts:
             - name: data
               mountPath: {{ .Values.dataMountPath }}

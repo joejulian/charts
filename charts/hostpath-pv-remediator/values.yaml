@@ -2,8 +2,9 @@ replicaCount: 1
 
 image:
   repository: git.julianfamily.org/joejulian/hostpath-pv-remediator
-  tag: ""
-  digest: ""
+  # renovate: image=git.julianfamily.org/joejulian/hostpath-pv-remediator
+  tag: "v0.1.1"
+  digest: "sha256:cdec91a36308f659aa2ebad8db33490eebdf53d12786bdf4de39fefbd8dff34a"
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []

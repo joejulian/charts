@@ -80,7 +80,7 @@ ensure_version() {
 
   if ! chart_version_published "${repository}" "${chart_name}" "${version}"; then
     echo "Publishing ${chart_name} ${version} from ${ref}"
-    helm push "${package}" "${repository}"
+    push_chart_package "${package}" "${repository}"
     python3 "${REPO_ROOT}/scripts/verify-chart-package-public.py" \
       "${chart_name}" \
       --owner "${GITHUB_REPOSITORY_OWNER:-joejulian}" \

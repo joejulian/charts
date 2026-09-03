@@ -57,7 +57,7 @@ release_chart() {
   fi
 
   if [[ "${needs_package}" -eq 1 ]]; then
-    helm push "${package}" "${repository}"
+    push_chart_package "${package}" "${repository}"
     python3 "${REPO_ROOT}/scripts/verify-chart-package-public.py" \
       "${chart_name}" \
       --owner "${GITHUB_REPOSITORY_OWNER:-joejulian}" \

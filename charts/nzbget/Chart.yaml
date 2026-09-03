@@ -3,7 +3,7 @@ annotations:
 apiVersion: v2
 name: nzbget
 description: An nzbget chart for Kubernetes
-version: 0.1.1
+version: "0.1.2"
 # renovate: image=ghcr.io/joejulian/container-images/nzbget
 appVersion: "v26.3"
 keywords:

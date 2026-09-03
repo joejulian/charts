@@ -51,7 +51,8 @@ spec:
   serviceAccountName: "{{ include "learner.fullname" . }}-test"
   containers:
     - name: kubectl
-      image: rancher/kubectl:v1.32.2
+      # renovate: image=docker.io/rancher/kubectl
+      image: docker.io/rancher/kubectl:v1.32.2
       command: ["kubectl"]
       args:
         - get

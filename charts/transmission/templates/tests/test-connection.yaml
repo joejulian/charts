@@ -10,7 +10,8 @@ metadata:
 spec:
   containers:
     - name: transmission
-      image: curlimages/curl:8.12.1
+      # renovate: image=docker.io/curlimages/curl
+      image: docker.io/curlimages/curl:8.12.1
       command: ["sh", "-ec"]
       args:
         - |

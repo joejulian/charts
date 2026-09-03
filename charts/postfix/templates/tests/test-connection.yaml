@@ -9,7 +9,8 @@ metadata:
 spec:
   containers:
     - name: smtp
-      image: bash:5.2.37
+      # renovate: image=docker.io/library/bash
+      image: docker.io/library/bash:5.2.37
       command: ['bash', '-ec']
       args:
         - |

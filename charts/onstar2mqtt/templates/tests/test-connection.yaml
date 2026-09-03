@@ -9,7 +9,8 @@ metadata:
 spec:
   containers:
     - name: wget
-      image: busybox
+      # renovate: image=docker.io/library/busybox
+      image: docker.io/library/busybox:1.38.0
       command: ['wget']
       args: ['{{ include "onstar2mqtt.fullname" . }}:{{ .Values.service.port }}']
   restartPolicy: Never

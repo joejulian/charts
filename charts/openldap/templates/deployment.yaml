@@ -71,6 +71,25 @@ spec:
           volumeMounts:
             - name: data
               mountPath: {{ .Values.dataMountPath }}
+        - name: rebuild-migrated-indexes
+          image: "{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - sh
+            - -ec
+            - |
+              data_root={{ .Values.dataMountPath | quote }}
+              migration_dir="${data_root}/migrations"
+              backup="${migration_dir}/olcDatabase={1}mdb.pre-openldap-2.6.13.ldif"
+              marker="${migration_dir}/openldap-2.6.13-indexes-rebuilt"
+              if [ -r "${backup}" ] && [ ! -e "${marker}" ]; then
+                slapindex -F "${data_root}/slapd.d" -u ldap -g ldap
+                touch "${marker}"
+                chown 439:439 "${marker}"
+              fi
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.dataMountPath }}
       containers:
         - name: {{ .Values.containerName }}
           image: "{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}"

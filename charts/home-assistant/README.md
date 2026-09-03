@@ -1,6 +1,6 @@
 # home-assistant
 
-![Version: 2.0.1](https://img.shields.io/badge/Version-2.0.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2025.12.4](https://img.shields.io/badge/AppVersion-2025.12.4-informational?style=flat-square)
+![Version: 3.4.0](https://img.shields.io/badge/Version-3.4.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2026.9.0](https://img.shields.io/badge/AppVersion-2026.9.0-informational?style=flat-square)
 
 Open source home automation that puts local control and privacy first
 
@@ -29,10 +29,12 @@ Open source home automation that puts local control and privacy first
 | addons.codeserver | object | See values.yaml | Enable and configure codeserver for the chart.    This allows for easy access to configuration.yaml |
 | controllers.main.containers.main.env | object | See below | environment variables. |
 | controllers.main.containers.main.image.pullPolicy | string | `"IfNotPresent"` |  |
-| controllers.main.containers.main.image.repository | string | `"ghcr.io/home-assistant/home-assistant"` |  |
+| controllers.main.containers.main.image.repository | string | `"ghcr.io/joejulian/container-images/home-assistant"` |  |
 | controllers.main.containers.main.image.tag | string | `nil` |  |
 | controllers.main.containers.main.probes | object | See values.yaml | Configures the probes for the main Pod. |
 | controllers.main.containers.main.securityContext.privileged | bool | `false` | Privileged securityContext may be required if USB devices are accessed directly through the host machine |
+| imagePrePull | object | `{"activeDeadlineSeconds":4500,"command":["/usr/bin/env","bash","-c","exit 0"],"enabled":false}` | Pre-pull and unpack the next Home Assistant image before upgrading the Recreate controller. The hook inherits the main controller's nodeSelector, tolerations, affinity, imagePullSecrets, runtimeClassName, schedulerName, and priorityClassName, but it does not mount the application's volumes or devices. |
+| imagePrePull.activeDeadlineSeconds | int | `4500` | Stop waiting without changing the existing workload when the image has not become runnable within this many seconds. |
 | ingress.main | object | See values.yaml | Enable and configure ingress settings for the chart under this key. |
 | metrics.enabled | bool | See values.yaml | Enable and configure a Prometheus serviceMonitor. |
 | metrics.prometheusRule | object | See values.yaml | Enable and configure Prometheus Rules for the chart under this key. |

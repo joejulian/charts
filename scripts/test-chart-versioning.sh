@@ -89,3 +89,37 @@ if ! grep -q 'packaged chart content changed' "${tmp_root}/guard-output"; then
   sed -n '1,120p' "${tmp_root}/guard-output" >&2
   fail "chart version guard failed without the expected diagnostic"
 fi
+
+assert_guard_result() {
+  local expected="$1"
+  local fixture="$2"
+  local base_app_version="$3"
+  local head_app_version="$4"
+  local base_chart_version="$5"
+  local head_chart_version="$6"
+  local fixture_root fixture_base
+
+  fixture_root="$(new_fixture "${fixture}" "${base_app_version}" "${base_chart_version}")"
+  fixture_base="$(git -C "${fixture_root}" rev-parse HEAD)"
+  sed -i "s/appVersion: ${base_app_version}/appVersion: ${head_app_version}/" "${fixture_root}/charts/heist-vault/Chart.yaml"
+  sed -i "s/version: ${base_chart_version}/version: ${head_chart_version}/" "${fixture_root}/charts/heist-vault/Chart.yaml"
+  sed -i 's/tag: 1\.0\.0/tag: 1.0.1/' "${fixture_root}/charts/heist-vault/values.yaml"
+  git -C "${fixture_root}" add charts/heist-vault
+  git -C "${fixture_root}" commit -qm "test: update the Bellagio vault chart"
+
+  if bash "${fixture_root}/scripts/check-chart-version-bumps.sh" "${fixture_base}" HEAD >"${tmp_root}/${fixture}-output" 2>&1; then
+    [[ "${expected}" == pass ]] || fail "chart version guard accepted misaligned ${fixture} versions"
+  else
+    [[ "${expected}" == fail ]] || {
+      sed -n '1,120p' "${tmp_root}/${fixture}-output" >&2
+      fail "chart version guard rejected aligned ${fixture} versions"
+    }
+  fi
+}
+
+assert_guard_result pass feature-choice 1.2.3 1.2.3 3.5.7 3.6.0
+assert_guard_result pass patch-aligned 1.2.3 1.2.4 3.5.7 3.5.8
+assert_guard_result pass minor-aligned 1.2.3 1.3.0 3.5.7 3.6.0
+assert_guard_result pass major-aligned 1.2.3 2.0.0 3.5.7 4.0.0
+assert_guard_result fail minor-misaligned 1.2.3 1.3.0 3.5.7 3.5.8
+assert_guard_result fail patch-misaligned 1.2.3 1.2.4 3.5.7 3.6.0

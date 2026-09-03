@@ -290,6 +290,44 @@ assert_hostpath_pv_remediator_render_guards() {
     --set "image.digest=${digest}" >/dev/null
 }
 
+assert_home_assistant_image_prepull_render() {
+  local chart_dir="$1"
+  local chart_app_version
+  local fixture="${REPO_ROOT}/ci/fixtures/home-assistant/prepull-values.yaml"
+  local default_image_render
+  local install_render
+  local upgrade_render
+
+  install_render="$(helm template heist-initial "${chart_dir}" --values "${fixture}")"
+  if grep -Fq '"helm.sh/hook": pre-upgrade' <<<"${install_render}"; then
+    echo "home-assistant rendered its image pre-pull hook during initial install" >&2
+    return 1
+  fi
+
+  upgrade_render="$(helm template --is-upgrade heist-upgrade "${chart_dir}" --values "${fixture}")"
+  for expected in \
+    'kind: Job' \
+    'name: heist-upgrade-image-prepull' \
+    '"helm.sh/hook": pre-upgrade' \
+    '"helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded' \
+    'activeDeadlineSeconds: 4500' \
+    'example.invalid/usb-node: "true"' \
+    'ghcr.io/joejulian/container-images/home-assistant:heist-movie@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'; do
+    if ! grep -Fq "${expected}" <<<"${upgrade_render}"; then
+      echo "home-assistant image pre-pull render is missing: ${expected}" >&2
+      return 1
+    fi
+  done
+
+  chart_app_version="$(python3 "${REPO_ROOT}/scripts/chart_yaml.py" json --file "${chart_dir}/Chart.yaml" | jq -r .appVersion)"
+  default_image_render="$(helm template --is-upgrade heist-default "${chart_dir}" --set imagePrePull.enabled=true)"
+  if ! grep -Fq "ghcr.io/joejulian/container-images/home-assistant:${chart_app_version}" \
+    <<<"${default_image_render}"; then
+    echo "home-assistant image pre-pull did not default to chart.appVersion" >&2
+    return 1
+  fi
+}
+
 run_chart_tests() {
   local chart_name="$1"
   local release_name="$2"
@@ -385,6 +423,9 @@ test_chart() {
   build_dependencies "${chart_dir}"
   if [[ "${chart_name}" == "hostpath-pv-remediator" ]]; then
     assert_hostpath_pv_remediator_render_guards "${chart_dir}" "${values_file}"
+  fi
+  if [[ "${chart_name}" == "home-assistant" ]]; then
+    assert_home_assistant_image_prepull_render "${chart_dir}"
   fi
   kubectl get namespace "${namespace}" >/dev/null 2>&1 || kubectl create namespace "${namespace}"
   setup_image_pull_secret "${namespace}"

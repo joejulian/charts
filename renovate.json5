@@ -37,7 +37,7 @@
       customType: "regex",
       managerFilePatterns: ["/(^|/)charts\\/[^/]+\\/values\\.ya?ml$/"],
       matchStrings: [
-        "# renovate: image=(?<depName>[^\\s]+)\\n\\s*(?:tag|version):\\s*[\"']?(?<currentValue>[^\"'\\n]+)[\"']?",
+        "# renovate: image=(?<depName>[^\\s]+)\\n\\s*(?:tag|version):\\s*[\"']?(?<currentValue>[^\"'\\n]+)[\"']?(?:\\n\\s*digest:\\s*[\"']?(?<currentDigest>sha256:[a-f0-9]{64})[\"']?)?",
       ],
       datasourceTemplate: "docker",
     },

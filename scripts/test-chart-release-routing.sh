@@ -44,4 +44,16 @@ assert_equal \
   "oci://ghcr.io/heist-crew/casino-charts" \
   "$(chart_oci_repository vault)"
 
+push_attempts=0
+helm() {
+  push_attempts=$((push_attempts + 1))
+  [[ "${push_attempts}" -ge 3 ]]
+}
+sleep() {
+  :
+}
+
+push_chart_package vault.tgz oci://ghcr.io/heist-crew/casino-charts
+assert_equal "3" "${push_attempts}"
+
 echo "Chart release routing tests passed"

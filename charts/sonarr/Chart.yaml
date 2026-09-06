@@ -5,7 +5,7 @@ annotations:
   org.opencontainers.image.source: https://github.com/joejulian/charts
 apiVersion: v2
 # renovate: image=ghcr.io/home-operations/sonarr
-appVersion: 4.0.19.3009
+appVersion: 4.0.19.3011
 dependencies:
 - name: common
   repository: https://bjw-s-labs.github.io/helm-charts/
@@ -26,4 +26,4 @@ sources:
 - https://github.com/home-operations/containers
 - https://github.com/pree/helm-charts
 type: application
-version: 1.12.2
+version: "1.12.3"

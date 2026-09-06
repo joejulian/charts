@@ -5,7 +5,7 @@ annotations:
   org.opencontainers.image.source: https://github.com/joejulian/charts
 apiVersion: v2
 # renovate: image=ghcr.io/joejulian/container-images/home-assistant
-appVersion: 2026.9.0
+appVersion: 2026.9.1
 dependencies:
 - name: common
   repository: https://bjw-s-labs.github.io/helm-charts/
@@ -25,4 +25,4 @@ name: home-assistant
 sources:
 - https://github.com/home-assistant/core
 type: application
-version: "3.4.0"
+version: "3.4.1"

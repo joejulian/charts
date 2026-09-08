@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "additionalProperties": true,
-  "required": ["configMapName", "version", "image", "kubernetesDistro", "verbose"],
+  "required": ["configMapName", "version", "image", "kubernetesDistro", "verbose", "migration"],
   "properties": {
     "configMapName": {
       "type": "string",
@@ -16,6 +16,14 @@
       "pattern": "^[^[:space:]]+(:[^@[:space:]]+)?(@sha256:[a-f0-9]{64})?$"
     },
     "kubernetesDistro": {"type": "string", "minLength": 1},
-    "verbose": {"type": "string", "enum": ["yes", "no"]}
+    "verbose": {"type": "string", "enum": ["yes", "no"]},
+    "migration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["retainDuringOperatorHandoff"],
+      "properties": {
+        "retainDuringOperatorHandoff": {"type": "boolean"}
+      }
+    }
   }
 }

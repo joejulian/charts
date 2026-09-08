@@ -7,3 +7,11 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 app.kubernetes.io/part-of: kadalu
 app.kubernetes.io/component: storage-server
 {{- end -}}
+
+{{/* Keep the adopted service account while the old operator release drops it. */}}
+{{- define "kadalu-storage.handoffAnnotations" -}}
+{{- if .Values.migration.retainDuringOperatorHandoff }}
+annotations:
+  helm.sh/resource-policy: keep
+{{- end }}
+{{- end -}}

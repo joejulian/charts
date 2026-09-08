@@ -4,6 +4,9 @@ kubeletDir: /var/lib/kubelet
 kubernetesDistro: kubernetes
 verbose: "no"
 
+migration:
+  retainDuringOperatorHandoff: false
+
 images:
   # renovate: image=ghcr.io/joejulian/kadalu-csi
   driver: ghcr.io/joejulian/kadalu-csi:1.4.0-rc.5

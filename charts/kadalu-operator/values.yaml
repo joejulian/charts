@@ -1,6 +1,7 @@
 operator:
   enabled: true
   image:
+    fullOverride: ""
     repository: ghcr.io/joejulian/kadalu-operator
     tag: "1.4.0-rc.5"
     digest: ""

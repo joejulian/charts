@@ -46,8 +46,12 @@
   "definitions": {
     "image": {
       "type": "object",
-      "required": ["repository", "tag", "digest", "pullPolicy"],
+      "required": ["fullOverride", "repository", "tag", "digest", "pullPolicy"],
       "properties": {
+        "fullOverride": {
+          "type": "string",
+          "pattern": "^$|^[^[:space:]]+@sha256:[a-f0-9]{64}$"
+        },
         "repository": {"type": "string", "minLength": 1},
         "tag": {"type": "string", "minLength": 1},
         "digest": {"type": "string", "pattern": "^$|^sha256:[a-f0-9]{64}$"},

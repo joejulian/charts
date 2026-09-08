@@ -8,9 +8,11 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 app.kubernetes.io/part-of: kadalu
 {{- end -}}
 
-{{/* Resolve the operator image, preferring an immutable digest. */}}
+{{/* Resolve the operator image, preferring a complete immutable override. */}}
 {{- define "kadalu-operator.image" -}}
-{{- if .Values.operator.image.digest -}}
+{{- if .Values.operator.image.fullOverride -}}
+{{- .Values.operator.image.fullOverride -}}
+{{- else if .Values.operator.image.digest -}}
 {{- printf "%s:%s@%s" .Values.operator.image.repository .Values.operator.image.tag .Values.operator.image.digest -}}
 {{- else -}}
 {{- printf "%s:%s" .Values.operator.image.repository .Values.operator.image.tag -}}

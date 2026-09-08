@@ -329,6 +329,7 @@ assert_home_assistant_image_prepull_render() {
 }
 
 assert_kadalu_component_boundaries() {
+  local immutable_operator_render
   local operator_render
   local migration_render
   local csi_render
@@ -336,6 +337,9 @@ assert_kadalu_component_boundaries() {
 
   operator_render="$(helm template operator "${REPO_ROOT}/charts/kadalu-operator" \
     --namespace kadalu)"
+  immutable_operator_render="$(helm template operator "${REPO_ROOT}/charts/kadalu-operator" \
+    --namespace kadalu \
+    --set-string 'operator.image.fullOverride=registry.example.invalid/kadalu-operator:test@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')"
   migration_render="$(helm template operator "${REPO_ROOT}/charts/kadalu-operator" \
     --namespace kadalu --set migration.retainComponentRBAC=true)"
   csi_render="$(helm template csi "${REPO_ROOT}/charts/kadalu-csi" \
@@ -350,6 +354,11 @@ assert_kadalu_component_boundaries() {
   fi
   if grep -Fq 'helm.sh/resource-policy: keep' <<<"${operator_render}"; then
     echo "Kadalu operator keep policy escaped the explicit migration gate" >&2
+    return 1
+  fi
+  if ! grep -Fq 'image: registry.example.invalid/kadalu-operator:test@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' \
+    <<<"${immutable_operator_render}"; then
+    echo "Kadalu operator immutable full image override was not preserved exactly" >&2
     return 1
   fi
   for expected in \

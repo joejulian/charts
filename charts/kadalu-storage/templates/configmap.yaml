@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.configMapName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kadalu-storage.labels" . | nindent 4 }}
+data:
+  version: {{ .Values.version | quote }}
+  image: {{ .Values.image | quote }}
+  kubernetesDistro: {{ .Values.kubernetesDistro | quote }}
+  verbose: {{ .Values.verbose | quote }}

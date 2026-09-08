@@ -1,0 +1,7 @@
+configMapName: kadalu-server-config
+version: "1.4.0-rc.5"
+kubernetesDistro: kubernetes
+verbose: "no"
+
+# renovate: image=ghcr.io/joejulian/kadalu-server
+image: ghcr.io/joejulian/kadalu-server:1.4.0-rc.5

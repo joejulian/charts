@@ -328,6 +328,58 @@ assert_home_assistant_image_prepull_render() {
   fi
 }
 
+assert_kadalu_component_boundaries() {
+  local operator_render
+  local migration_render
+  local csi_render
+  local storage_render
+
+  operator_render="$(helm template operator "${REPO_ROOT}/charts/kadalu-operator" \
+    --namespace kadalu)"
+  migration_render="$(helm template operator "${REPO_ROOT}/charts/kadalu-operator" \
+    --namespace kadalu --set migration.retainComponentRBAC=true)"
+  csi_render="$(helm template csi "${REPO_ROOT}/charts/kadalu-csi" \
+    --namespace kadalu)"
+  storage_render="$(helm template storage "${REPO_ROOT}/charts/kadalu-storage" \
+    --namespace kadalu)"
+
+  if grep -Eq '^kind: (DaemonSet|StatefulSet|CSIDriver)$' \
+    <<<"${csi_render}${storage_render}"; then
+    echo "Kadalu component charts must not take generated workload ownership" >&2
+    return 1
+  fi
+  if grep -Fq 'helm.sh/resource-policy: keep' <<<"${operator_render}"; then
+    echo "Kadalu operator keep policy escaped the explicit migration gate" >&2
+    return 1
+  fi
+  for expected in \
+    'helm.sh/resource-policy: keep' \
+    'name: kadalu-csi-nodeplugin' \
+    'name: kadalu-csi-provisioner' \
+    'name: kadalu-server-sa'; do
+    if ! grep -Fq "${expected}" <<<"${migration_render}"; then
+      echo "Kadalu migration render is missing: ${expected}" >&2
+      return 1
+    fi
+  done
+  for expected in \
+    'name: kadalu-csi-config' \
+    'driverImage:' \
+    'nodeDriverRegistrarImage:' \
+    'loggingImage:'; do
+    if ! grep -Fq "${expected}" <<<"${csi_render}"; then
+      echo "Kadalu CSI contract is missing: ${expected}" >&2
+      return 1
+    fi
+  done
+  for expected in 'name: kadalu-server-config' 'image:'; do
+    if ! grep -Fq "${expected}" <<<"${storage_render}"; then
+      echo "Kadalu storage contract is missing: ${expected}" >&2
+      return 1
+    fi
+  done
+}
+
 run_chart_tests() {
   local chart_name="$1"
   local release_name="$2"
@@ -426,6 +478,9 @@ test_chart() {
   fi
   if [[ "${chart_name}" == "home-assistant" ]]; then
     assert_home_assistant_image_prepull_render "${chart_dir}"
+  fi
+  if [[ "${chart_name}" == "kadalu-operator" ]]; then
+    assert_kadalu_component_boundaries
   fi
   kubectl get namespace "${namespace}" >/dev/null 2>&1 || kubectl create namespace "${namespace}"
   setup_image_pull_secret "${namespace}"

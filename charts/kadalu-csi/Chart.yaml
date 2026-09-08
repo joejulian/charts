@@ -12,4 +12,4 @@ name: kadalu-csi
 sources:
   - https://github.com/joejulian/kadalu
 type: application
-version: 0.1.0
+version: 0.1.1

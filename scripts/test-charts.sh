@@ -333,7 +333,9 @@ assert_kadalu_component_boundaries() {
   local operator_render
   local migration_render
   local csi_render
+  local csi_handoff_render
   local storage_render
+  local storage_handoff_render
 
   operator_render="$(helm template operator "${REPO_ROOT}/charts/kadalu-operator" \
     --namespace kadalu)"
@@ -344,8 +346,12 @@ assert_kadalu_component_boundaries() {
     --namespace kadalu --set migration.retainComponentRBAC=true)"
   csi_render="$(helm template csi "${REPO_ROOT}/charts/kadalu-csi" \
     --namespace kadalu)"
+  csi_handoff_render="$(helm template csi "${REPO_ROOT}/charts/kadalu-csi" \
+    --namespace kadalu --set migration.retainDuringOperatorHandoff=true)"
   storage_render="$(helm template storage "${REPO_ROOT}/charts/kadalu-storage" \
     --namespace kadalu)"
+  storage_handoff_render="$(helm template storage "${REPO_ROOT}/charts/kadalu-storage" \
+    --namespace kadalu --set migration.retainDuringOperatorHandoff=true)"
 
   if grep -Eq '^kind: (DaemonSet|StatefulSet|CSIDriver)$' \
     <<<"${csi_render}${storage_render}"; then
@@ -354,6 +360,18 @@ assert_kadalu_component_boundaries() {
   fi
   if grep -Fq 'helm.sh/resource-policy: keep' <<<"${operator_render}"; then
     echo "Kadalu operator keep policy escaped the explicit migration gate" >&2
+    return 1
+  fi
+  if grep -Fq 'helm.sh/resource-policy: keep' <<<"${csi_render}${storage_render}"; then
+    echo "Kadalu component keep policy escaped the explicit migration gate" >&2
+    return 1
+  fi
+  if [[ "$(grep -Fc 'helm.sh/resource-policy: keep' <<<"${csi_handoff_render}")" -ne 12 ]]; then
+    echo "Kadalu CSI handoff must retain all 12 adopted resources" >&2
+    return 1
+  fi
+  if [[ "$(grep -Fc 'helm.sh/resource-policy: keep' <<<"${storage_handoff_render}")" -ne 1 ]]; then
+    echo "Kadalu storage handoff must retain its adopted service account" >&2
     return 1
   fi
   if ! grep -Fq 'image: registry.example.invalid/kadalu-operator:test@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' \

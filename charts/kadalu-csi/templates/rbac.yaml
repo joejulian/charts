@@ -1,6 +1,7 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
+  {{- include "kadalu-csi.handoffAnnotations" . | nindent 2 }}
   name: kadalu-csi-external-attacher
   labels:
     {{- include "kadalu-csi.labels" . | nindent 4 }}
@@ -9,6 +10,7 @@ rules: []
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
+  {{- include "kadalu-csi.handoffAnnotations" . | nindent 2 }}
   name: kadalu-csi-external-attacher
   labels:
     {{- include "kadalu-csi.labels" . | nindent 4 }}
@@ -24,6 +26,7 @@ roleRef:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
+  {{- include "kadalu-csi.handoffAnnotations" . | nindent 2 }}
   name: kadalu-csi-external-provisioner
   labels:
     {{- include "kadalu-csi.labels" . | nindent 4 }}
@@ -56,6 +59,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
+  {{- include "kadalu-csi.handoffAnnotations" . | nindent 2 }}
   name: kadalu-csi-external-provisioner
   labels:
     {{- include "kadalu-csi.labels" . | nindent 4 }}
@@ -71,6 +75,7 @@ roleRef:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
+  {{- include "kadalu-csi.handoffAnnotations" . | nindent 2 }}
   name: kadalu-csi-external-resizer
   labels:
     {{- include "kadalu-csi.labels" . | nindent 4 }}
@@ -97,6 +102,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
+  {{- include "kadalu-csi.handoffAnnotations" . | nindent 2 }}
   name: kadalu-csi-external-resizer
   labels:
     {{- include "kadalu-csi.labels" . | nindent 4 }}
@@ -112,6 +118,7 @@ roleRef:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
+  {{- include "kadalu-csi.handoffAnnotations" . | nindent 2 }}
   name: kadalu-csi-nodeplugin
   labels:
     {{- include "kadalu-csi.labels" . | nindent 4 }}
@@ -123,6 +130,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
+  {{- include "kadalu-csi.handoffAnnotations" . | nindent 2 }}
   name: kadalu-csi-nodeplugin
   labels:
     {{- include "kadalu-csi.labels" . | nindent 4 }}
@@ -138,6 +146,7 @@ roleRef:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
+  {{- include "kadalu-csi.handoffAnnotations" . | nindent 2 }}
   name: kadalu-csi-leader-election
   namespace: {{ .Release.Namespace }}
   labels:
@@ -150,6 +159,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
+  {{- include "kadalu-csi.handoffAnnotations" . | nindent 2 }}
   name: kadalu-csi-leader-election
   namespace: {{ .Release.Namespace }}
   labels:

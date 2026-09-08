@@ -2,13 +2,21 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "additionalProperties": true,
-  "required": ["configMapName", "version", "kubeletDir", "kubernetesDistro", "verbose", "images"],
+  "required": ["configMapName", "version", "kubeletDir", "kubernetesDistro", "verbose", "migration", "images"],
   "properties": {
     "configMapName": {"$ref": "#/definitions/dnsLabel"},
     "version": {"type": "string", "minLength": 1},
     "kubeletDir": {"type": "string", "pattern": "^/"},
     "kubernetesDistro": {"type": "string", "minLength": 1},
     "verbose": {"type": "string", "enum": ["yes", "no"]},
+    "migration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["retainDuringOperatorHandoff"],
+      "properties": {
+        "retainDuringOperatorHandoff": {"type": "boolean"}
+      }
+    },
     "images": {
       "type": "object",
       "required": ["driver", "nodeDriverRegistrar", "provisioner", "resizer", "livenessProbe", "logging"],

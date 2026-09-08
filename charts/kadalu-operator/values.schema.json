@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["operator", "runtimeDefaults", "componentConfigMaps", "migration"],
+  "properties": {
+    "operator": {
+      "type": "object",
+      "required": ["enabled", "image", "progressDeadlineSeconds", "verbose"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "progressDeadlineSeconds": {"type": "integer", "minimum": 1},
+        "verbose": {"type": "string", "enum": ["yes", "no"]},
+        "image": {"$ref": "#/definitions/image"}
+      }
+    },
+    "runtimeDefaults": {
+      "type": "object",
+      "required": ["version", "imageRegistry", "imageRepository", "csiSidecarRegistry", "loggingImage", "kubeletDir", "kubernetesDistro"],
+      "properties": {
+        "version": {"type": "string", "minLength": 1},
+        "imageRegistry": {"type": "string", "minLength": 1},
+        "imageRepository": {"type": "string", "minLength": 1},
+        "csiSidecarRegistry": {"type": "string", "minLength": 1},
+        "loggingImage": {"type": "string", "minLength": 1},
+        "kubeletDir": {"type": "string", "pattern": "^/"},
+        "kubernetesDistro": {"type": "string", "minLength": 1}
+      }
+    },
+    "componentConfigMaps": {
+      "type": "object",
+      "required": ["csi", "server"],
+      "properties": {
+        "csi": {"$ref": "#/definitions/dnsLabel"},
+        "server": {"$ref": "#/definitions/dnsLabel"}
+      }
+    },
+    "migration": {
+      "type": "object",
+      "required": ["retainComponentRBAC"],
+      "properties": {
+        "retainComponentRBAC": {"type": "boolean"}
+      }
+    }
+  },
+  "definitions": {
+    "image": {
+      "type": "object",
+      "required": ["repository", "tag", "digest", "pullPolicy"],
+      "properties": {
+        "repository": {"type": "string", "minLength": 1},
+        "tag": {"type": "string", "minLength": 1},
+        "digest": {"type": "string", "pattern": "^$|^sha256:[a-f0-9]{64}$"},
+        "pullPolicy": {"type": "string", "enum": ["Always", "IfNotPresent", "Never"]}
+      }
+    },
+    "dnsLabel": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 63,
+      "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["configMapName", "version", "kubeletDir", "kubernetesDistro", "verbose", "images"],
+  "properties": {
+    "configMapName": {"$ref": "#/definitions/dnsLabel"},
+    "version": {"type": "string", "minLength": 1},
+    "kubeletDir": {"type": "string", "pattern": "^/"},
+    "kubernetesDistro": {"type": "string", "minLength": 1},
+    "verbose": {"type": "string", "enum": ["yes", "no"]},
+    "images": {
+      "type": "object",
+      "required": ["driver", "nodeDriverRegistrar", "provisioner", "resizer", "livenessProbe", "logging"],
+      "additionalProperties": false,
+      "properties": {
+        "driver": {"$ref": "#/definitions/imageRef"},
+        "nodeDriverRegistrar": {"$ref": "#/definitions/imageRef"},
+        "provisioner": {"$ref": "#/definitions/imageRef"},
+        "resizer": {"$ref": "#/definitions/imageRef"},
+        "livenessProbe": {"$ref": "#/definitions/imageRef"},
+        "logging": {"$ref": "#/definitions/imageRef"}
+      }
+    }
+  },
+  "definitions": {
+    "dnsLabel": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 63,
+      "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+    },
+    "imageRef": {
+      "type": "string",
+      "pattern": "^[^[:space:]]+(:[^@[:space:]]+)?(@sha256:[a-f0-9]{64})?$"
+    }
+  }
+}

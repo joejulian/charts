@@ -1,0 +1,15 @@
+annotations:
+  org.opencontainers.image.source: https://github.com/joejulian/charts
+apiVersion: v2
+# renovate: image=ghcr.io/joejulian/kadalu-server
+appVersion: 1.4.0-rc.5
+description: Kadalu storage-server identity and operator-consumed release configuration
+home: https://github.com/joejulian/charts/tree/main/charts/kadalu-storage
+maintainers:
+  - email: me@joejulian.name
+    name: joejulian
+name: kadalu-storage
+sources:
+  - https://github.com/joejulian/kadalu
+type: application
+version: 0.1.0

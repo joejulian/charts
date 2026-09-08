@@ -1,0 +1,19 @@
+configMapName: kadalu-csi-config
+version: "1.4.0-rc.5"
+kubeletDir: /var/lib/kubelet
+kubernetesDistro: kubernetes
+verbose: "no"
+
+images:
+  # renovate: image=ghcr.io/joejulian/kadalu-csi
+  driver: ghcr.io/joejulian/kadalu-csi:1.4.0-rc.5
+  # renovate: image=registry.k8s.io/sig-storage/csi-node-driver-registrar
+  nodeDriverRegistrar: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.17.0@sha256:f9de845b170155199f2a2a3f9531cf13d78e31235e9db6b6582a8b0db0a50dad
+  # renovate: image=registry.k8s.io/sig-storage/csi-provisioner
+  provisioner: registry.k8s.io/sig-storage/csi-provisioner:v6.3.0@sha256:a4b0b1a37605b7b04a293e136edf7006ec1786a8eb3f4e5a945f81d667dcc371
+  # renovate: image=registry.k8s.io/sig-storage/csi-resizer
+  resizer: registry.k8s.io/sig-storage/csi-resizer:v2.2.1@sha256:ea1d25e23479000c7e8eeb92d827df66258df4e482ca054c5e7ce3fc0f5c41a5
+  # renovate: image=registry.k8s.io/sig-storage/livenessprobe
+  livenessProbe: registry.k8s.io/sig-storage/livenessprobe:v2.19.0@sha256:06da0d5b8908072f2e4522692aee8dc119fba7247a9658497e1153992cd777e9
+  # renovate: image=docker.io/library/busybox
+  logging: docker.io/library/busybox:1.38.0@sha256:dc2d74b28e4cf8984fa52af1f39bc7c3d9c73760b41a74d629f5d11b1ab28616

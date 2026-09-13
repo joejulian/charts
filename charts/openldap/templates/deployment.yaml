@@ -96,6 +96,26 @@ spec:
           volumeMounts:
             - name: data
               mountPath: {{ .Values.dataMountPath }}
+        {{- if .Values.configfiles }}
+        - name: initialize-config
+          image: "{{ .Values.image.repository }}:{{ $imageTag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - sh
+            - -ec
+            - |
+              data_root={{ .Values.dataMountPath | quote }}
+              config_dir="${data_root}/slapd.d"
+              if [ ! -r "${config_dir}/cn=config.ldif" ]; then
+                setpriv --reuid=ldap --regid=ldap --init-groups \
+                  slaptest -f /config/slapd.conf -F "${config_dir}"
+              fi
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.dataMountPath }}
+            - name: config
+              mountPath: /config
+        {{- end }}
         {{- if .Values.migration.enabled }}
         - name: import-version-migration
           image: "{{ .Values.image.repository }}:{{ $imageTag }}"
@@ -566,8 +586,6 @@ spec:
             - ldap://:{{ .Values.service.internalPort }}
             - -F
             - {{ .Values.dataMountPath }}/slapd.d
-            - -f
-            - /config/slapd.conf
 {{ else if not .Values.configfiles }}
           args:
             - -d

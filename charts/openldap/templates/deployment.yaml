@@ -1,3 +1,4 @@
+{{- $imageTag := default .Chart.AppVersion .Values.image.tag -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -35,6 +36,9 @@ spec:
 {{ toYaml .Values.podLabels | indent 8 }}
         {{- end }}
     spec:
+      {{- if .Values.migration.enabled }}
+      terminationGracePeriodSeconds: {{ .Values.migration.terminationGracePeriodSeconds }}
+      {{- end }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -71,8 +75,207 @@ spec:
           volumeMounts:
             - name: data
               mountPath: {{ .Values.dataMountPath }}
+        {{- if .Values.migration.enabled }}
+        - name: import-version-migration
+          image: "{{ .Values.image.repository }}:{{ $imageTag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: OPENLDAP_IMAGE_VERSION
+              value: {{ $imageTag | quote }}
+          command:
+            - sh
+            - -ec
+            - |
+              data_root={{ .Values.dataMountPath | quote }}
+              database_number={{ .Values.migration.databaseNumber | quote }}
+              migration_root="${data_root}/migrations/openldap-lmdb"
+              handoff_dir="${migration_root}/handoff"
+              export_file="${handoff_dir}/database.ldif"
+              source_version_file="${handoff_dir}/source-version"
+              ready_file="${handoff_dir}/ready"
+              in_progress_file="${migration_root}/in-progress"
+              active_version_file="${migration_root}/active-version"
+              previous_version_file="${migration_root}/previous-version"
+              previous_database_file="${migration_root}/previous-database"
+              database_dir="${data_root}/data"
+
+              if [ -z "${data_root}" ] || [ "${data_root}" = / ]; then
+                echo "Refusing unsafe OpenLDAP data root" >&2
+                exit 1
+              fi
+
+              version_series() {
+                parsed="$(printf '%s\n' "$1" | sed -nE 's/^v?([0-9]+\.[0-9]+)(\..*)?$/\1/p')"
+                if [ -n "${parsed}" ]; then
+                  printf '%s\n' "${parsed}"
+                else
+                  printf '%s\n' "$1"
+                fi
+              }
+
+              version_key() {
+                printf '%s' "$1" | sed 's/[^A-Za-z0-9._-]/_/g'
+              }
+
+              remove_file() {
+                if [ -e "$1" ]; then
+                  rm -- "$1"
+                fi
+              }
+
+              remove_partial_database() {
+                if [ "${database_dir}" != "${data_root}/data" ]; then
+                  echo "Refusing unsafe OpenLDAP database removal" >&2
+                  exit 1
+                fi
+                if [ -e "${database_dir}" ]; then
+                  rm -r -- "${database_dir}"
+                fi
+              }
+
+              write_version_file() {
+                destination="$1"
+                value="$2"
+                temporary="${destination}.tmp"
+                remove_file "${temporary}"
+                printf '%s\n' "${value}" > "${temporary}"
+                mv "${temporary}" "${destination}"
+              }
+
+              umask 077
+              mkdir -p "${migration_root}"
+
+              if [ -e "${in_progress_file}" ]; then
+                if [ ! -r "${source_version_file}" ]; then
+                  echo "OpenLDAP migration was interrupted without a source version" >&2
+                  exit 1
+                fi
+                interrupted_previous="$(cat "${in_progress_file}")"
+                case "${interrupted_previous}" in
+                  "${migration_root}"/data.pre-*) ;;
+                  *)
+                    echo "OpenLDAP migration recorded an unsafe backup path" >&2
+                    exit 1
+                    ;;
+                esac
+                if [ -d "${interrupted_previous}" ]; then
+                  remove_partial_database
+                  mv "${interrupted_previous}" "${database_dir}"
+                fi
+                remove_file "${in_progress_file}"
+              fi
+
+              target_version="${OPENLDAP_IMAGE_VERSION}"
+              target_series="$(version_series "${target_version}")"
+
+              if [ ! -e "${ready_file}" ]; then
+                if [ -r "${active_version_file}" ]; then
+                  active_version="$(cat "${active_version_file}")"
+                  active_series="$(version_series "${active_version}")"
+                  if [ "${active_series}" != "${target_series}" ]; then
+                    if [ ! -r "${previous_version_file}" ]; then
+                      echo "OpenLDAP database format differs and no rollback version is recorded" >&2
+                      exit 1
+                    fi
+                    previous_version="$(cat "${previous_version_file}")"
+                    previous_series="$(version_series "${previous_version}")"
+                    if [ ! -r "${previous_database_file}" ]; then
+                      echo "OpenLDAP database format differs and no rollback database path is recorded" >&2
+                      exit 1
+                    fi
+                    previous_database="$(cat "${previous_database_file}")"
+                    case "${previous_database}" in
+                      "${migration_root}"/data.pre-*) ;;
+                      *)
+                        echo "OpenLDAP migration recorded an unsafe rollback path" >&2
+                        exit 1
+                        ;;
+                    esac
+                    failed_key="$(version_key "${active_version}")"
+                    failed_database="${migration_root}/data.failed-${failed_key}"
+                    failed_index=0
+                    while [ -e "${failed_database}" ]; do
+                      failed_index=$((failed_index + 1))
+                      failed_database="${migration_root}/data.failed-${failed_key}.${failed_index}"
+                    done
+                    if [ "${previous_series}" != "${target_series}" ] || [ ! -d "${previous_database}" ]; then
+                      echo "OpenLDAP database format differs and no matching rollback database exists" >&2
+                      exit 1
+                    fi
+                    mv "${database_dir}" "${failed_database}"
+                    mv "${previous_database}" "${database_dir}"
+                    write_version_file "${active_version_file}" "${target_version}"
+                  fi
+                fi
+                exit 0
+              fi
+
+              if [ ! -r "${source_version_file}" ] || [ ! -f "${export_file}" ]; then
+                echo "OpenLDAP migration handoff is incomplete" >&2
+                exit 1
+              fi
+
+              source_version="$(cat "${source_version_file}")"
+              source_series="$(version_series "${source_version}")"
+
+              if [ "${source_series}" = "${target_series}" ]; then
+                write_version_file "${active_version_file}" "${target_version}"
+                remove_file "${ready_file}"
+                exit 0
+              fi
+
+              source_key="$(version_key "${source_version}")"
+              previous_database="${migration_root}/data.pre-${source_key}"
+              previous_index=0
+              while [ -e "${previous_database}" ]; do
+                previous_index=$((previous_index + 1))
+                previous_database="${migration_root}/data.pre-${source_key}.${previous_index}"
+              done
+              verification_file="${migration_root}/database.verify.ldif"
+
+              chown 439:439 "${export_file}"
+              write_version_file "${in_progress_file}" "${previous_database}"
+              mv "${database_dir}" "${previous_database}"
+              mkdir "${database_dir}"
+              chown 439:439 "${database_dir}"
+
+              migration_failed=true
+              if setpriv --reuid=ldap --regid=ldap --init-groups \
+                slapadd -F "${data_root}/slapd.d" -n "${database_number}" -l "${export_file}"; then
+                remove_file "${verification_file}"
+                if setpriv --reuid=ldap --regid=ldap --init-groups \
+                  slapcat -F "${data_root}/slapd.d" -n "${database_number}" -l "${verification_file}"; then
+                  source_entries="$(awk '/^dn::? / { count++ } END { print count + 0 }' "${export_file}")"
+                  imported_entries="$(awk '/^dn::? / { count++ } END { print count + 0 }' "${verification_file}")"
+                  if [ "${source_entries}" = "${imported_entries}" ]; then
+                    migration_failed=false
+                  else
+                    echo "OpenLDAP migration entry count mismatch: ${source_entries} != ${imported_entries}" >&2
+                  fi
+                fi
+              fi
+
+              remove_file "${verification_file}"
+              if [ "${migration_failed}" = true ]; then
+                remove_partial_database
+                mv "${previous_database}" "${database_dir}"
+                remove_file "${in_progress_file}"
+                echo "OpenLDAP database migration failed; restored the source database" >&2
+                exit 1
+              fi
+
+              write_version_file "${previous_version_file}" "${source_version}"
+              write_version_file "${previous_database_file}" "${previous_database}"
+              write_version_file "${active_version_file}" "${target_version}"
+              remove_file "${in_progress_file}"
+              remove_file "${ready_file}"
+              echo "Migrated OpenLDAP database from ${source_version} to ${target_version} (${imported_entries} entries)"
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.dataMountPath }}
+        {{- end }}
         - name: rebuild-migrated-indexes
-          image: "{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}"
+          image: "{{ .Values.image.repository }}:{{ $imageTag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
             - sh
@@ -92,8 +295,49 @@ spec:
               mountPath: {{ .Values.dataMountPath }}
       containers:
         - name: {{ .Values.containerName }}
-          image: "{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}"
+          image: "{{ .Values.image.repository }}:{{ $imageTag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.migration.enabled }}
+          env:
+            - name: OPENLDAP_IMAGE_VERSION
+              value: {{ $imageTag | quote }}
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - sh
+                  - -ec
+                  - |
+                    data_root={{ .Values.dataMountPath | quote }}
+                    database_number={{ .Values.migration.databaseNumber | quote }}
+                    migration_root="${data_root}/migrations/openldap-lmdb"
+                    handoff_dir="${migration_root}/handoff"
+                    export_file="${handoff_dir}/database.ldif"
+                    export_temporary="${export_file}.tmp"
+                    source_version_file="${handoff_dir}/source-version"
+                    source_version_temporary="${source_version_file}.tmp"
+                    ready_file="${handoff_dir}/ready"
+                    ready_temporary="${ready_file}.tmp"
+
+                    umask 077
+                    mkdir -p "${handoff_dir}"
+                    for stale_file in \
+                      "${ready_file}" \
+                      "${export_temporary}" \
+                      "${source_version_temporary}" \
+                      "${ready_temporary}"; do
+                      if [ -e "${stale_file}" ]; then
+                        rm -- "${stale_file}"
+                      fi
+                    done
+
+                    slapcat -F "${data_root}/slapd.d" -n "${database_number}" -l "${export_temporary}"
+                    mv "${export_temporary}" "${export_file}"
+                    printf '%s\n' "${OPENLDAP_IMAGE_VERSION}" > "${source_version_temporary}"
+                    mv "${source_version_temporary}" "${source_version_file}"
+                    : > "${ready_temporary}"
+                    mv "${ready_temporary}" "${ready_file}"
+          {{- end }}
           command:
             - /usr/sbin/prlimit
             - --nofile={{ .Values.maxOpenFiles }}:{{ .Values.maxOpenFiles }}

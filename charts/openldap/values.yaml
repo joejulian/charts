@@ -20,6 +20,14 @@ image:
   tag: ""
   pullPolicy: Always
 imagePullSecrets: []
+# Deploy once with migration enabled on the current OpenLDAP feature series so
+# the running pod has the preStop exporter before changing image.tag/appVersion.
+# The importer manages the MDB database at <dataMountPath>/data and retains each
+# source-format directory under <dataMountPath>/migrations/openldap-lmdb.
+migration:
+  enabled: true
+  databaseNumber: 1
+  terminationGracePeriodSeconds: 300
 service:
   resourceName: ""
   name: ldap

@@ -24,13 +24,6 @@
       addLabels: ["automerge"],
     },
     {
-      description: "OpenLDAP 2.7 requires an offline LMDB export/import migration",
-      matchDatasources: ["docker"],
-      matchPackageNames: ["ghcr.io/joejulian/container-images/openldap"],
-      allowedVersions: "<2.7.0",
-      automerge: false,
-    },
-    {
       matchManagers: ["helmv3"],
       matchUpdateTypes: ["minor", "patch"],
       automerge: true,

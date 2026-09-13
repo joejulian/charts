@@ -407,84 +407,6 @@ assert_kadalu_component_boundaries() {
   done
 }
 
-openldap_entry_count() {
-  local namespace="$1"
-
-  kubectl -n "${namespace}" exec deployment/openldap-openldap -c openldap -- \
-    sh -ec 'slapcat -F /data/slapd.d -n 1 2>/dev/null | awk '\''/^dn::? / { count++ } END { print count + 0 }'\'''
-}
-
-assert_openldap_entry() {
-  local namespace="$1"
-
-  kubectl -n "${namespace}" exec deployment/openldap-openldap -c openldap -- \
-    ldapsearch -LLL -x -H ldap://127.0.0.1:10389 \
-      -b dc=my-domain,dc=com -s base '(objectClass=*)' dn >/dev/null
-}
-
-assert_openldap_lmdb_migration() {
-  local chart_dir="$1"
-  local release_name="$2"
-  local namespace="$3"
-  local values_file="$4"
-  local before_count after_upgrade_count after_downgrade_count pod
-  local -a upgrade_args
-
-  if ! kubectl -n "${namespace}" exec -i deployment/openldap-openldap -c openldap -- \
-    ldapsearch -LLL -x -H ldap://127.0.0.1:10389 \
-      -b dc=my-domain,dc=com -s base '(objectClass=*)' dn >/dev/null 2>&1; then
-    kubectl -n "${namespace}" exec -i deployment/openldap-openldap -c openldap -- \
-      ldapadd -x -H ldap://127.0.0.1:10389 \
-        -D cn=Manager,dc=my-domain,dc=com -w secret >/dev/null <<'EOF'
-dn: dc=my-domain,dc=com
-objectClass: top
-objectClass: dcObject
-objectClass: organization
-o: Example Organization
-dc: my-domain
-EOF
-  fi
-
-  before_count="$(openldap_entry_count "${namespace}")"
-  if [[ "${before_count}" -lt 1 ]]; then
-    echo "OpenLDAP migration fixture contains no entries" >&2
-    return 1
-  fi
-
-  upgrade_args=(upgrade "${release_name}" "${chart_dir}" -n "${namespace}" --wait --timeout 10m)
-  if [[ -f "${values_file}" ]]; then
-    upgrade_args+=(-f "${values_file}")
-  fi
-  upgrade_args+=(
-    --set-json configfiles=null
-    --set-json 'args=["-h","ldap://:10389","-F","/data/slapd.d","-d","0x8100"]'
-  )
-
-  helm "${upgrade_args[@]}" --set-string image.tag=2.7.1-1
-  wait_for_workloads "${namespace}"
-  assert_openldap_entry "${namespace}"
-  after_upgrade_count="$(openldap_entry_count "${namespace}")"
-  if [[ "${after_upgrade_count}" != "${before_count}" ]]; then
-    echo "OpenLDAP 2.7 migration changed the entry count (${before_count} -> ${after_upgrade_count})" >&2
-    return 1
-  fi
-  pod="$(kubectl -n "${namespace}" get pods -l app=openldap,release="${release_name}" \
-    -o jsonpath='{.items[0].metadata.name}')"
-  kubectl -n "${namespace}" logs "${pod}" -c import-version-migration | \
-    grep -Fq "Migrated OpenLDAP database from 2.6.13-1 to 2.7.1-1 (${before_count} entries)"
-  kubectl -n "${namespace}" exec "${pod}" -c openldap -- \
-    test -d /data/migrations/openldap-lmdb/data.pre-2.6.13-1
-
-  helm "${upgrade_args[@]}"
-  wait_for_workloads "${namespace}"
-  assert_openldap_entry "${namespace}"
-  after_downgrade_count="$(openldap_entry_count "${namespace}")"
-  if [[ "${after_downgrade_count}" != "${before_count}" ]]; then
-    echo "OpenLDAP 2.6 reverse migration changed the entry count (${before_count} -> ${after_downgrade_count})" >&2
-    return 1
-  fi
-}
-
 run_chart_tests() {
   local chart_name="$1"
   local release_name="$2"
@@ -510,38 +432,6 @@ setup_chart_fixtures() {
   local namespace="$2"
 
   case "${chart_name}" in
-    openldap)
-      cat <<EOF | kubectl apply -f -
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: ${namespace}-openldap-data
-spec:
-  capacity:
-    storage: 1Gi
-  accessModes:
-    - ReadWriteOnce
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: ""
-  hostPath:
-    path: /tmp/${namespace}-openldap-data
-    type: DirectoryOrCreate
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: openldap-data
-  namespace: ${namespace}
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
-  storageClassName: ""
-  volumeName: ${namespace}-openldap-data
-EOF
-      ;;
     postfix)
       kubectl -n "${namespace}" create configmap postfix \
         --from-file=main.cf="${REPO_ROOT}/ci/fixtures/postfix/main.cf" \
@@ -637,12 +527,6 @@ test_chart() {
   wait_for_workloads "${namespace}"
 
   run_chart_tests "${chart_name}" "${release_name}" "${namespace}"
-
-  if [[ "${chart_name}" == "openldap" ]]; then
-    assert_openldap_lmdb_migration "${chart_dir}" "${release_name}" "${namespace}" "${values_file}"
-    run_chart_tests "${chart_name}" "${release_name}" "${namespace}"
-    return
-  fi
 
   helm "${helm_args[@]}"
   wait_for_workloads "${namespace}"

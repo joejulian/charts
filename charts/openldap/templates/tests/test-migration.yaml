@@ -1,0 +1,87 @@
+{{- if .Values.tests.migration.enabled }}
+{{- if not .Values.persistence.enabled }}
+{{- fail "tests.migration.enabled requires persistence.enabled" }}
+{{- end }}
+{{- $imageTag := default .Chart.AppVersion .Values.image.tag -}}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ template "openldap.fullname" . }}-test-migration"
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded,hook-failed
+spec:
+  restartPolicy: Never
+  {{- with .Values.podSecurityContext }}
+  securityContext:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  containers:
+    - name: migration
+      image: "{{ .Values.image.repository }}:{{ $imageTag }}"
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      {{- with .Values.securityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      env:
+        - name: OPENLDAP_IMAGE_VERSION
+          value: {{ $imageTag | quote }}
+        - name: TEST_IS_UPGRADE
+          value: {{ .Release.IsUpgrade | quote }}
+        - name: TEST_BASE_DN
+          value: {{ .Values.tests.migration.baseDN | quote }}
+        - name: TEST_BIND_DN
+          value: {{ .Values.tests.migration.bindDN | quote }}
+        - name: TEST_BIND_PASSWORD
+          value: {{ .Values.tests.migration.bindPassword | quote }}
+        - name: TEST_LDIF
+          value: {{ .Values.tests.migration.ldif | quote }}
+      command:
+        - sh
+        - -ec
+        - |
+          ldap_uri="ldap://{{ default (include "openldap.fullname" .) .Values.service.resourceName }}:{{ .Values.service.externalPort }}"
+          migration_root={{ printf "%s/migrations/openldap-lmdb" .Values.dataMountPath | quote }}
+          active_version="$(sed -n '1p' "${migration_root}/active-version")"
+
+          if [ "${active_version}" != "${OPENLDAP_IMAGE_VERSION}" ]; then
+            echo "OpenLDAP active database version ${active_version} does not match ${OPENLDAP_IMAGE_VERSION}" >&2
+            exit 1
+          fi
+          if [ -e "${migration_root}/previous-version" ] && \
+            { [ ! -r "${migration_root}/pre-stop-status" ] || \
+              ! grep -Eq '^success source=[^ ]+ stage=complete$' "${migration_root}/pre-stop-status"; }; then
+            echo "OpenLDAP pre-stop export did not complete successfully" >&2
+            exit 1
+          fi
+
+          attempt=0
+          until ldapwhoami -x -H "${ldap_uri}" >/dev/null 2>&1; do
+            attempt=$((attempt + 1))
+            if [ "${attempt}" -ge 30 ]; then
+              echo "OpenLDAP did not accept LDAP connections" >&2
+              exit 1
+            fi
+            sleep 2
+          done
+
+          if [ "${TEST_IS_UPGRADE}" != "true" ] && \
+            ! ldapsearch -LLL -x -H "${ldap_uri}" -b "${TEST_BASE_DN}" \
+              -s base '(objectClass=*)' dn >/dev/null 2>&1; then
+            printf '%s\n' "${TEST_LDIF}" | ldapadd -x -H "${ldap_uri}" \
+              -D "${TEST_BIND_DN}" -w "${TEST_BIND_PASSWORD}" >/dev/null
+          fi
+
+          ldapsearch -LLL -x -H "${ldap_uri}" -b "${TEST_BASE_DN}" \
+            -s base '(objectClass=*)' dn >/dev/null
+      volumeMounts:
+        - name: data
+          mountPath: {{ .Values.dataMountPath }}
+          readOnly: true
+  volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: {{ default (include "openldap.name" .) .Values.persistence.existingClaim }}
+{{- end }}

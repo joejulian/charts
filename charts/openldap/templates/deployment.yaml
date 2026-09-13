@@ -43,6 +43,10 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       initContainers:
         - name: init-data
           image: "{{ .Values.initContainer.image.repository }}:{{ .Values.initContainer.image.tag }}"
@@ -51,7 +55,21 @@ spec:
             - -ec
             - |
               data_root={{ .Values.dataMountPath | quote }}
+              migration_database_dir={{ .Values.migration.databaseDirectory | quote }}
               mkdir -p "${data_root}/slapd.d" "${data_root}/data"
+              {{- if .Values.migration.enabled }}
+              mkdir -p "${data_root}/migrations/openldap-lmdb"
+              {{- end }}
+              if [ -n "${migration_database_dir}" ]; then
+                case "${migration_database_dir}" in
+                  "${data_root}"/*) ;;
+                  *)
+                    echo "OpenLDAP migration database directory must be below ${data_root}" >&2
+                    exit 1
+                    ;;
+                esac
+                mkdir -p "${migration_database_dir}"
+              fi
               legacy_config="${data_root}/slapd.d/cn=config/olcDatabase={1}mdb.ldif"
               if [ -r "${legacy_config}" ] && grep -Eq 'olcBdbConfig|^(olcDbCacheSize|olcDbConfig|olcDbDirtyRead|olcDbIDLcacheSize|olcDbLinearIndex|olcDbShmKey|olcDbCacheFree|olcDbDNcacheSize):' "${legacy_config}"; then
                 migration_dir="${data_root}/migrations"
@@ -69,6 +87,9 @@ spec:
                 mv "${work}" "${legacy_config}"
               fi
               chown -R 439:439 "${data_root}/slapd.d" "${data_root}/data"
+              if [ -n "${migration_database_dir}" ]; then
+                chown -R 439:439 "${migration_database_dir}"
+              fi
               if [ -d "${data_root}/migrations" ]; then
                 chown -R 439:439 "${data_root}/migrations"
               fi
@@ -88,16 +109,18 @@ spec:
             - |
               data_root={{ .Values.dataMountPath | quote }}
               database_number={{ .Values.migration.databaseNumber | quote }}
+              configured_database_dir={{ .Values.migration.databaseDirectory | quote }}
               migration_root="${data_root}/migrations/openldap-lmdb"
               handoff_dir="${migration_root}/handoff"
               export_file="${handoff_dir}/database.ldif"
               source_version_file="${handoff_dir}/source-version"
               ready_file="${handoff_dir}/ready"
+              pre_stop_status_file="${migration_root}/pre-stop-status"
               in_progress_file="${migration_root}/in-progress"
               active_version_file="${migration_root}/active-version"
               previous_version_file="${migration_root}/previous-version"
               previous_database_file="${migration_root}/previous-database"
-              database_dir="${data_root}/data"
+              database_dir=""
 
               if [ -z "${data_root}" ] || [ "${data_root}" = / ]; then
                 echo "Refusing unsafe OpenLDAP data root" >&2
@@ -117,6 +140,46 @@ spec:
                 printf '%s' "$1" | sed 's/[^A-Za-z0-9._-]/_/g'
               }
 
+              discover_database_dir() {
+                discovered="${configured_database_dir}"
+                if [ -z "${discovered}" ]; then
+                  database_config=""
+                  database_config_count=0
+                  database_prefix="${data_root}/slapd.d/cn=config/olcDatabase={${database_number}}"
+                  for candidate in "${database_prefix}"*.ldif; do
+                    [ -f "${candidate}" ] || continue
+                    if grep -q '^olcDbDirectory: ' "${candidate}"; then
+                      database_config="${candidate}"
+                      database_config_count=$((database_config_count + 1))
+                    fi
+                  done
+                  if [ "${database_config_count}" -ne 1 ]; then
+                    echo "Unable to identify one OpenLDAP database directory for database ${database_number}" >&2
+                    exit 1
+                  fi
+                  if [ "$(grep -c '^olcDbDirectory: ' "${database_config}")" -ne 1 ]; then
+                    echo "OpenLDAP database config has an ambiguous olcDbDirectory" >&2
+                    exit 1
+                  fi
+                  discovered="$(sed -n 's/^olcDbDirectory: //p' "${database_config}")"
+                fi
+
+                case "${discovered}" in
+                  "${data_root}"/*) ;;
+                  *)
+                    echo "OpenLDAP database directory must be below ${data_root}" >&2
+                    exit 1
+                    ;;
+                esac
+                case "${discovered}" in
+                  "${migration_root}"|"${migration_root}"/*|*/../*|*/..|*/./*|*/.|*//*)
+                    echo "OpenLDAP database directory is unsafe" >&2
+                    exit 1
+                    ;;
+                esac
+                printf '%s\n' "${discovered}"
+              }
+
               remove_file() {
                 if [ -e "$1" ]; then
                   rm -- "$1"
@@ -124,10 +187,13 @@ spec:
               }
 
               remove_partial_database() {
-                if [ "${database_dir}" != "${data_root}/data" ]; then
-                  echo "Refusing unsafe OpenLDAP database removal" >&2
-                  exit 1
-                fi
+                case "${database_dir}" in
+                  "${data_root}"/*) ;;
+                  *)
+                    echo "Refusing unsafe OpenLDAP database removal" >&2
+                    exit 1
+                    ;;
+                esac
                 if [ -e "${database_dir}" ]; then
                   rm -r -- "${database_dir}"
                 fi
@@ -139,11 +205,14 @@ spec:
                 temporary="${destination}.tmp"
                 remove_file "${temporary}"
                 printf '%s\n' "${value}" > "${temporary}"
+                chown 439:439 "${temporary}"
+                chmod 0600 "${temporary}"
                 mv "${temporary}" "${destination}"
               }
 
               umask 077
               mkdir -p "${migration_root}"
+              database_dir="$(discover_database_dir)"
 
               if [ -e "${in_progress_file}" ]; then
                 if [ ! -r "${source_version_file}" ]; then
@@ -169,6 +238,15 @@ spec:
               target_series="$(version_series "${target_version}")"
 
               if [ ! -e "${ready_file}" ]; then
+                if [ -r "${pre_stop_status_file}" ]; then
+                  pre_stop_status="$(cat "${pre_stop_status_file}")"
+                  pre_stop_source="$(printf '%s\n' "${pre_stop_status}" | sed -n 's/^[a-z]* source=\([^ ]*\).*/\1/p')"
+                  if [ -n "${pre_stop_source}" ] && \
+                    [ "$(version_series "${pre_stop_source}")" != "${target_series}" ]; then
+                    echo "OpenLDAP feature-series migration has no completed pre-stop export (${pre_stop_status})" >&2
+                    exit 1
+                  fi
+                fi
                 if [ -r "${active_version_file}" ]; then
                   active_version="$(cat "${active_version_file}")"
                   active_series="$(version_series "${active_version}")"
@@ -207,6 +285,9 @@ spec:
                     write_version_file "${active_version_file}" "${target_version}"
                   fi
                 fi
+                if [ ! -r "${active_version_file}" ]; then
+                  write_version_file "${active_version_file}" "${target_version}"
+                fi
                 exit 0
               fi
 
@@ -236,7 +317,7 @@ spec:
               chown 439:439 "${export_file}"
               write_version_file "${in_progress_file}" "${previous_database}"
               mv "${database_dir}" "${previous_database}"
-              mkdir "${database_dir}"
+              mkdir -p "${database_dir}"
               chown 439:439 "${database_dir}"
 
               migration_failed=true
@@ -297,6 +378,10 @@ spec:
         - name: {{ .Values.containerName }}
           image: "{{ .Values.image.repository }}:{{ $imageTag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           {{- if .Values.migration.enabled }}
           env:
             - name: OPENLDAP_IMAGE_VERSION
@@ -318,31 +403,158 @@ spec:
                     source_version_temporary="${source_version_file}.tmp"
                     ready_file="${handoff_dir}/ready"
                     ready_temporary="${ready_file}.tmp"
+                    pre_stop_status_file="${migration_root}/pre-stop-status"
+                    pre_stop_status_temporary="${pre_stop_status_file}.tmp"
+                    pre_stop_error_file="${migration_root}/pre-stop-error"
+                    pre_stop_error_temporary="${pre_stop_error_file}.tmp"
+                    runtime_root="/tmp/openldap-migration"
+                    slapd_pid_file="${runtime_root}/slapd.pid"
+                    stop_marker="${runtime_root}/pre-stop"
+                    stop_marker_temporary="${stop_marker}.tmp"
+                    stage=prepare
+
+                    record_failure() {
+                      status=$?
+                      trap - EXIT
+                      if [ "${status}" -ne 0 ]; then
+                        if [ -e "${pre_stop_error_temporary}" ]; then
+                          mv "${pre_stop_error_temporary}" "${pre_stop_error_file}" || true
+                        fi
+                        printf 'failed source=%s stage=%s exit=%s\n' \
+                          "${OPENLDAP_IMAGE_VERSION}" "${stage}" "${status}" \
+                          > "${pre_stop_status_temporary}" 2>/dev/null && \
+                          mv "${pre_stop_status_temporary}" "${pre_stop_status_file}" || true
+                      fi
+                      exit "${status}"
+                    }
 
                     umask 077
                     mkdir -p "${handoff_dir}"
+                    trap record_failure EXIT
                     for stale_file in \
                       "${ready_file}" \
                       "${export_temporary}" \
                       "${source_version_temporary}" \
-                      "${ready_temporary}"; do
+                      "${ready_temporary}" \
+                      "${pre_stop_status_temporary}" \
+                      "${pre_stop_error_temporary}" \
+                      "${stop_marker_temporary}"; do
                       if [ -e "${stale_file}" ]; then
                         rm -- "${stale_file}"
                       fi
                     done
 
-                    slapcat -F "${data_root}/slapd.d" -n "${database_number}" -l "${export_temporary}"
+                    printf 'running source=%s stage=quiesce\n' "${OPENLDAP_IMAGE_VERSION}" > "${pre_stop_status_temporary}"
+                    mv "${pre_stop_status_temporary}" "${pre_stop_status_file}"
+                    : > "${stop_marker_temporary}"
+                    mv "${stop_marker_temporary}" "${stop_marker}"
+
+                    stage=quiesce
+                    if [ ! -r "${slapd_pid_file}" ]; then
+                      echo "OpenLDAP supervisor PID file is unavailable" >&2
+                      exit 1
+                    fi
+                    slapd_pid="$(cat "${slapd_pid_file}")"
+                    case "${slapd_pid}" in
+                      ''|*[!0-9]*)
+                        echo "OpenLDAP supervisor recorded an invalid PID" >&2
+                        exit 1
+                        ;;
+                    esac
+                    kill -TERM "${slapd_pid}"
+                    stop_attempt=0
+                    while kill -0 "${slapd_pid}" 2>/dev/null; do
+                      stop_attempt=$((stop_attempt + 1))
+                      if [ "${stop_attempt}" -ge 60 ]; then
+                        echo "OpenLDAP did not stop before the migration export" >&2
+                        exit 1
+                      fi
+                      sleep 1
+                    done
+
+                    stage=slapcat
+                    slapcat -F "${data_root}/slapd.d" -n "${database_number}" \
+                      -l "${export_temporary}" 2> "${pre_stop_error_temporary}"
+                    if [ -e "${pre_stop_error_temporary}" ]; then
+                      rm -- "${pre_stop_error_temporary}"
+                    fi
+                    if [ -e "${pre_stop_error_file}" ]; then
+                      rm -- "${pre_stop_error_file}"
+                    fi
+
+                    stage=publish
                     mv "${export_temporary}" "${export_file}"
                     printf '%s\n' "${OPENLDAP_IMAGE_VERSION}" > "${source_version_temporary}"
                     mv "${source_version_temporary}" "${source_version_file}"
                     : > "${ready_temporary}"
                     mv "${ready_temporary}" "${ready_file}"
+                    printf 'success source=%s stage=complete\n' "${OPENLDAP_IMAGE_VERSION}" > "${pre_stop_status_temporary}"
+                    mv "${pre_stop_status_temporary}" "${pre_stop_status_file}"
+                    trap - EXIT
           {{- end }}
+          {{- if .Values.migration.enabled }}
+          command:
+            - sh
+            - -ec
+            - |
+              runtime_root=/tmp/openldap-migration
+              slapd_pid_file="${runtime_root}/slapd.pid"
+              slapd_pid_temporary="${slapd_pid_file}.tmp"
+              stop_marker="${runtime_root}/pre-stop"
+              termination_requested=false
+
+              # Invoked by the TERM/INT trap.
+              # shellcheck disable=SC2329
+              forward_termination() {
+                termination_requested=true
+                if [ -r "${slapd_pid_file}" ]; then
+                  child_pid="$(cat "${slapd_pid_file}")"
+                  case "${child_pid}" in
+                    ''|*[!0-9]*) return ;;
+                  esac
+                  kill -TERM "${child_pid}" 2>/dev/null || true
+                fi
+              }
+
+              mkdir -p "${runtime_root}"
+              for stale_file in "${slapd_pid_file}" "${slapd_pid_temporary}" "${stop_marker}"; do
+                if [ -e "${stale_file}" ]; then
+                  rm -- "${stale_file}"
+                fi
+              done
+              trap forward_termination TERM INT
+
+              /usr/sbin/prlimit --nofile={{ .Values.maxOpenFiles }}:{{ .Values.maxOpenFiles }} \
+                -- /usr/bin/slapd "$@" &
+              slapd_pid=$!
+              printf '%s\n' "${slapd_pid}" > "${slapd_pid_temporary}"
+              mv "${slapd_pid_temporary}" "${slapd_pid_file}"
+
+              if wait "${slapd_pid}"; then
+                slapd_status=0
+              else
+                slapd_status=$?
+              fi
+              if [ -e "${slapd_pid_file}" ]; then
+                rm -- "${slapd_pid_file}"
+              fi
+
+              if [ -e "${stop_marker}" ]; then
+                while [ "${termination_requested}" != true ]; do
+                  sleep 1 &
+                  wait $! || true
+                done
+                exit 0
+              fi
+              exit "${slapd_status}"
+            - openldap-wrapper
+          {{- else }}
           command:
             - /usr/sbin/prlimit
             - --nofile={{ .Values.maxOpenFiles }}:{{ .Values.maxOpenFiles }}
             - --
             - /usr/bin/slapd
+          {{- end }}
 {{ if .Values.args }}
           args:
 {{ toYaml .Values.args | indent 12 }}

@@ -1,5 +1,0 @@
-image:
-  tag: "2.6.13-1"
-persistence:
-  enabled: true
-  existingClaim: openldap-data

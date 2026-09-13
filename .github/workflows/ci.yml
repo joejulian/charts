@@ -97,7 +97,8 @@ jobs:
           custom_charts=()
           for chart in "${charts[@]}"; do
             if [[ "${chart##*/}" == "openldap" ]]; then
-              ct install --config ct.yaml --upgrade --target-branch "${TARGET_BRANCH}" --charts "${chart}"
+              ct_chart="${chart#"${GITHUB_WORKSPACE}"/}"
+              ct install --config ct.yaml --upgrade --target-branch "${TARGET_BRANCH}" --charts "${ct_chart}"
             else
               custom_charts+=("${chart}")
             fi

@@ -22,9 +22,12 @@ assert_level() {
 }
 
 assert_level 0 4.0.19.3009 4.0.19.3009
+assert_level 0 v1.2.3 1.2.3
 assert_level 1 4.0.17.2969 4.0.19.3009
 assert_level 1 latest stable
 assert_level 1 v1.2.3 v1.2.4
+assert_level 1 2.7.1-1 2.7.1-2
+assert_level 2 2.7.1-1 2.6.13-1
 assert_level 2 2026.3.4 2026.6.4
 assert_level 3 1.9.9 2.0.0
 
@@ -121,5 +124,7 @@ assert_guard_result pass feature-choice 1.2.3 1.2.3 3.5.7 3.6.0
 assert_guard_result pass patch-aligned 1.2.3 1.2.4 3.5.7 3.5.8
 assert_guard_result pass minor-aligned 1.2.3 1.3.0 3.5.7 3.6.0
 assert_guard_result pass major-aligned 1.2.3 2.0.0 3.5.7 4.0.0
+assert_guard_result pass package-feature-aligned 2.7.1-1 2.6.13-1 0.0.12 0.1.0
 assert_guard_result fail minor-misaligned 1.2.3 1.3.0 3.5.7 3.5.8
 assert_guard_result fail patch-misaligned 1.2.3 1.2.4 3.5.7 3.6.0
+assert_guard_result fail package-feature-misaligned 2.7.1-1 2.6.13-1 0.0.12 0.0.13

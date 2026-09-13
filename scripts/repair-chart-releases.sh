@@ -56,12 +56,29 @@ extract_chart_at_ref() {
   printf '%s\n' "${extract_root}/charts/${chart_name}"
 }
 
+remove_extract_dir() {
+  local cleanup_dir="$1"
+  local resolved_cleanup_dir resolved_tmp_root
+
+  [[ -n "${cleanup_dir}" ]] || return 1
+  resolved_tmp_root="$(realpath -e "${TMP_ROOT}")"
+  resolved_cleanup_dir="$(realpath -e "${cleanup_dir}")"
+  if [[ "${resolved_cleanup_dir}" != "${resolved_tmp_root}/"* ]]; then
+    echo "Refusing to remove extraction directory outside ${resolved_tmp_root}: ${resolved_cleanup_dir}" >&2
+    return 1
+  fi
+
+  rm -r -- "${resolved_cleanup_dir}"
+}
+
 ensure_version() {
   local chart_name="$1"
   local version="$2"
   local ref="$3"
   local tag="${chart_name}-${version}"
   local package chart_dir cleanup_dir repository package_prefix
+  local chart_published=0
+  local github_release_present=0
 
   package="${DIST_DIR}/${chart_name}-${version}.tgz"
   chart_dir="${REPO_ROOT}/charts/${chart_name}"
@@ -74,11 +91,21 @@ ensure_version() {
     cleanup_dir="$(dirname "$(dirname "${chart_dir}")")"
   fi
 
-  if ! chart_version_published "${repository}" "${chart_name}" "${version}" || ! github_release_exists "${tag}"; then
+  # Snapshot remote state once. Repeating these network probes can produce
+  # contradictory answers and leave package creation out of sync with publish.
+  if chart_version_published "${repository}" "${chart_name}" "${version}"; then
+    chart_published=1
+  fi
+
+  if github_release_exists "${tag}"; then
+    github_release_present=1
+  fi
+
+  if [[ "${chart_published}" -eq 0 || "${github_release_present}" -eq 0 ]]; then
     package="$(package_chart "${chart_dir}")"
   fi
 
-  if ! chart_version_published "${repository}" "${chart_name}" "${version}"; then
+  if [[ "${chart_published}" -eq 0 ]]; then
     echo "Publishing ${chart_name} ${version} from ${ref}"
     push_chart_package "${package}" "${repository}"
     python3 "${REPO_ROOT}/scripts/verify-chart-package-public.py" \
@@ -92,7 +119,7 @@ ensure_version() {
     git tag -a "${tag}" -m "Release ${chart_name} ${version}"
   fi
 
-  if ! github_release_exists "${tag}"; then
+  if [[ "${github_release_present}" -eq 0 ]]; then
     if ! remote_tag_exists "${tag}"; then
       git push origin "refs/tags/${tag}"
     fi
@@ -101,7 +128,7 @@ ensure_version() {
   fi
 
   if [[ -n "${cleanup_dir}" ]]; then
-    rm -rf "${cleanup_dir}"
+    remove_extract_dir "${cleanup_dir}"
   fi
 }
 
@@ -186,4 +213,6 @@ main() {
   done < <(resolve_charts "${mode}" "${mode_args[@]}")
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi

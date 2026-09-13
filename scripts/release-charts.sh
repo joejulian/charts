@@ -32,21 +32,28 @@ remote_tag_exists() {
 
 release_chart() {
   local chart_dir="$1"
-  local chart_name version package tag needs_package repository package_prefix
+  local chart_name version package tag repository package_prefix
+  local chart_published=0
+  local github_release_present=0
 
   chart_name="$(basename "${chart_dir}")"
   repository="$(chart_oci_repository "${chart_name}")"
   package_prefix="$(chart_package_prefix "${repository}")"
   version="$(helm show chart "${chart_dir}" | awk '/^version:/ {print $2}')"
   tag="${chart_name}-${version}"
-  needs_package=1
 
+  # Snapshot remote state once. Repeating these network probes can produce
+  # contradictory answers and leave package creation out of sync with publish.
   if chart_version_published "${repository}" "${chart_name}" "${version}"; then
     echo "Chart ${chart_name} ${version} is already published"
-    needs_package=0
+    chart_published=1
   fi
 
-  if [[ "${needs_package}" -eq 1 ]] || ! github_release_exists "${tag}"; then
+  if github_release_exists "${tag}"; then
+    github_release_present=1
+  fi
+
+  if [[ "${chart_published}" -eq 0 || "${github_release_present}" -eq 0 ]]; then
     if grep -q '^dependencies:' "${chart_dir}/Chart.yaml" 2>/dev/null; then
       helm dependency build "${chart_dir}"
     fi
@@ -56,7 +63,7 @@ release_chart() {
     package="${DIST_DIR}/${chart_name}-${version}.tgz"
   fi
 
-  if [[ "${needs_package}" -eq 1 ]]; then
+  if [[ "${chart_published}" -eq 0 ]]; then
     push_chart_package "${package}" "${repository}"
     python3 "${REPO_ROOT}/scripts/verify-chart-package-public.py" \
       "${chart_name}" \
@@ -69,7 +76,7 @@ release_chart() {
     git tag -a "${tag}" -m "Release ${chart_name} ${version}"
   fi
 
-  if ! github_release_exists "${tag}"; then
+  if [[ "${github_release_present}" -eq 0 ]]; then
     if ! remote_tag_exists "${tag}"; then
       git push origin "refs/tags/${tag}"
     fi
@@ -93,4 +100,6 @@ main() {
   done
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi

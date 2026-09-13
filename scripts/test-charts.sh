@@ -451,13 +451,14 @@ EOF
     return 1
   fi
 
-  upgrade_args=(upgrade "${release_name}" "${chart_dir}" -n "${namespace}" --wait --timeout 10m)
+  upgrade_args=(upgrade "${release_name}" "${chart_dir}" -n "${namespace}" --wait --timeout 10m --force-replace --server-side=false)
   if [[ -f "${values_file}" ]]; then
     upgrade_args+=(-f "${values_file}")
   fi
   upgrade_args+=(
     --set-json configfiles=null
     --set-json 'args=["-h","ldap://:10389","-F","/data/slapd.d","-d","0x8100"]'
+    --set-string migration.databaseDirectory=
   )
 
   helm "${upgrade_args[@]}" --set-string image.tag=2.7.1-1

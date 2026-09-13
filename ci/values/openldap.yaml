@@ -1,5 +1,19 @@
 image:
   tag: "2.6.13-1"
+migration:
+  databaseDirectory: /data/ci-database
 persistence:
   enabled: true
   existingClaim: openldap-data
+configfiles:
+  slapd.conf: |
+    include         /etc/openldap/schema/core.schema
+    pidfile         /run/openldap/slapd.pid
+    argsfile        /run/openldap/slapd.args
+    database        mdb
+    maxsize         1073741824
+    suffix          "dc=my-domain,dc=com"
+    rootdn          "cn=Manager,dc=my-domain,dc=com"
+    rootpw          secret
+    directory       /data/ci-database
+    index           objectClass eq

@@ -30,7 +30,7 @@ chart_yaml_value() {
 required_chart_bump_level() {
   local chart_dir="$1"
   local relative_chart_dir="${chart_dir#"${REPO_ROOT}"/}"
-  local base_chart head_chart dep_name dep_version base_app_version head_app_version level
+  local base_chart head_chart dep_name dep_version base_app_version head_app_version app_version_bump_policy level
   declare -A base_deps=()
   declare -A head_deps=()
 
@@ -39,6 +39,20 @@ required_chart_bump_level() {
   base_app_version="$(jq -r '.appVersion' <<<"${base_chart}")"
   head_app_version="$(jq -r '.appVersion' <<<"${head_chart}")"
   level="$(version_change_level "${base_app_version}" "${head_app_version}")"
+  app_version_bump_policy="$(jq -r '.annotations.appVersionBumpPolicy // ""' <<<"${head_chart}")"
+
+  case "${app_version_bump_policy}" in
+    "") ;;
+    patch)
+      if (( level > 0 )); then
+        level=1
+      fi
+      ;;
+    *)
+      echo "Chart ${relative_chart_dir}: unsupported appVersionBumpPolicy ${app_version_bump_policy}" >&2
+      return 1
+      ;;
+  esac
 
   while IFS=$'\t' read -r dep_name dep_version; do
     [[ -n "${dep_name}" ]] || continue

@@ -205,6 +205,8 @@ spec:
                 temporary="${destination}.tmp"
                 remove_file "${temporary}"
                 printf '%s\n' "${value}" > "${temporary}"
+                chown 439:439 "${temporary}"
+                chmod 0600 "${temporary}"
                 mv "${temporary}" "${destination}"
               }
 

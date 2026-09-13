@@ -31,6 +31,13 @@ migration:
   databaseNumber: 1
   databaseDirectory: ""
   terminationGracePeriodSeconds: 300
+tests:
+  migration:
+    enabled: false
+    baseDN: ""
+    bindDN: ""
+    bindPassword: ""
+    ldif: ""
 service:
   resourceName: ""
   name: ldap

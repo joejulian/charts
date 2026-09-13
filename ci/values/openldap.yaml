@@ -1,5 +1,17 @@
 image:
   tag: "2.6.13-1"
+podSecurityContext:
+  fsGroup: 439
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  runAsGroup: 439
+  runAsNonRoot: true
+  runAsUser: 439
+  seccompProfile:
+    type: RuntimeDefault
 migration:
   databaseDirectory: /data/ci-database
 persistence:

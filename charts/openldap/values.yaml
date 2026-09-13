@@ -20,6 +20,8 @@ image:
   tag: ""
   pullPolicy: Always
 imagePullSecrets: []
+podSecurityContext: {}
+securityContext: {}
 # Deploy once with migration enabled on the current OpenLDAP feature series so
 # the running pod has the preStop exporter before changing image.tag/appVersion.
 # The importer discovers olcDbDirectory from cn=config unless databaseDirectory

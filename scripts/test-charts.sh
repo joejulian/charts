@@ -486,6 +486,90 @@ EOF
   fi
 }
 
+assert_openldap_lmdb_migration_fails_closed() {
+  local chart_dir="$1"
+  local release_name="$2"
+  local namespace="$3"
+  local values_file="$4"
+  local before_count recovered_count pod init_exit_code init_log main_started
+  local -a upgrade_args
+
+  before_count="$(openldap_entry_count "${namespace}")"
+  upgrade_args=(upgrade "${release_name}" "${chart_dir}" -n "${namespace}" --force-replace --server-side=false)
+  if [[ -f "${values_file}" ]]; then
+    upgrade_args+=(-f "${values_file}")
+  fi
+  upgrade_args+=(
+    --set-json configfiles=null
+    --set-json 'args=["-h","ldap://:10389","-F","/data/slapd.d","-d","0x8100"]'
+  )
+
+  # Arm the running 2.6 pod with an intentionally invalid database number. Its
+  # next pre-stop hook will quiesce slapd, then fail before publishing an LDIF.
+  helm "${upgrade_args[@]}" --wait --timeout 10m \
+    --set-string image.tag=2.6.13-1 \
+    --set-string migration.databaseNumber=99 \
+    --set-string migration.databaseDirectory=/data/ci-database
+  wait_for_workloads "${namespace}"
+  assert_openldap_entry "${namespace}"
+
+  # Do not wait for readiness: the expected result is a target pod blocked in
+  # its migration init container, with the 2.7 application container unstarted.
+  helm "${upgrade_args[@]}" \
+    --set-string image.tag=2.7.1-1 \
+    --set-string migration.databaseNumber=1 \
+    --set-string migration.databaseDirectory=
+
+  pod=""
+  init_exit_code=""
+  for _ in {1..120}; do
+    pod="$(kubectl -n "${namespace}" get pods -l app=openldap,release="${release_name}" -o json | \
+      jq -r '.items | map(select(any(.spec.containers[]?; .image | endswith(":2.7.1-1")))) | sort_by(.metadata.creationTimestamp) | last | .metadata.name // empty')"
+    if [[ -n "${pod}" ]]; then
+      init_exit_code="$(kubectl -n "${namespace}" get pod "${pod}" -o json | \
+        jq -r '[.status.initContainerStatuses[]? | select(.name == "import-version-migration") | (.state.terminated.exitCode // .lastState.terminated.exitCode // empty)] | first // empty')"
+      if [[ "${init_exit_code}" == "1" ]]; then
+        break
+      fi
+    fi
+    sleep 1
+  done
+
+  if [[ -z "${pod}" || "${init_exit_code}" != "1" ]]; then
+    echo "OpenLDAP 2.7 migration did not fail closed in its init container" >&2
+    kubectl -n "${namespace}" get pods -l app=openldap,release="${release_name}" -o wide >&2
+    return 1
+  fi
+
+  init_log="$(kubectl -n "${namespace}" logs "${pod}" -c import-version-migration 2>&1 || true)"
+  if ! grep -Fq \
+    'OpenLDAP feature-series migration has no completed pre-stop export (failed source=2.6.13-1 stage=slapcat' \
+    <<<"${init_log}"; then
+    echo "OpenLDAP 2.7 migration failed for an unexpected reason: ${init_log}" >&2
+    return 1
+  fi
+
+  main_started="$(kubectl -n "${namespace}" get pod "${pod}" -o json | \
+    jq '[.status.containerStatuses[]? | select(.name == "openldap") | select((.containerID // "") != "" or (.lastState.terminated.containerID // "") != "")] | length')"
+  if [[ "${main_started}" -ne 0 ]]; then
+    echo "OpenLDAP 2.7 application container started despite a failed migration handoff" >&2
+    return 1
+  fi
+  echo "OpenLDAP migration correctly blocked 2.7 after the failed pre-stop export"
+
+  helm "${upgrade_args[@]}" --wait --timeout 10m \
+    --set-string image.tag=2.6.13-1 \
+    --set-string migration.databaseNumber=1 \
+    --set-string migration.databaseDirectory=
+  wait_for_workloads "${namespace}"
+  assert_openldap_entry "${namespace}"
+  recovered_count="$(openldap_entry_count "${namespace}")"
+  if [[ "${recovered_count}" != "${before_count}" ]]; then
+    echo "OpenLDAP fail-closed recovery changed the entry count (${before_count} -> ${recovered_count})" >&2
+    return 1
+  fi
+}
+
 run_chart_tests() {
   local chart_name="$1"
   local release_name="$2"
@@ -641,6 +725,7 @@ test_chart() {
 
   if [[ "${chart_name}" == "openldap" ]]; then
     assert_openldap_lmdb_migration "${chart_dir}" "${release_name}" "${namespace}" "${values_file}"
+    assert_openldap_lmdb_migration_fails_closed "${chart_dir}" "${release_name}" "${namespace}" "${values_file}"
     run_chart_tests "${chart_name}" "${release_name}" "${namespace}"
     return
   fi

@@ -43,6 +43,10 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       initContainers:
         - name: init-data
           image: "{{ .Values.initContainer.image.repository }}:{{ .Values.initContainer.image.tag }}"
@@ -53,6 +57,9 @@ spec:
               data_root={{ .Values.dataMountPath | quote }}
               migration_database_dir={{ .Values.migration.databaseDirectory | quote }}
               mkdir -p "${data_root}/slapd.d" "${data_root}/data"
+              {{- if .Values.migration.enabled }}
+              mkdir -p "${data_root}/migrations/openldap-lmdb"
+              {{- end }}
               if [ -n "${migration_database_dir}" ]; then
                 case "${migration_database_dir}" in
                   "${data_root}"/*) ;;
@@ -276,6 +283,9 @@ spec:
                     write_version_file "${active_version_file}" "${target_version}"
                   fi
                 fi
+                if [ ! -r "${active_version_file}" ]; then
+                  write_version_file "${active_version_file}" "${target_version}"
+                fi
                 exit 0
               fi
 
@@ -366,6 +376,10 @@ spec:
         - name: {{ .Values.containerName }}
           image: "{{ .Values.image.repository }}:{{ $imageTag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           {{- if .Values.migration.enabled }}
           env:
             - name: OPENLDAP_IMAGE_VERSION
@@ -391,7 +405,7 @@ spec:
                     pre_stop_status_temporary="${pre_stop_status_file}.tmp"
                     pre_stop_error_file="${migration_root}/pre-stop-error"
                     pre_stop_error_temporary="${pre_stop_error_file}.tmp"
-                    runtime_root="/run/openldap-migration"
+                    runtime_root="/tmp/openldap-migration"
                     slapd_pid_file="${runtime_root}/slapd.pid"
                     stop_marker="${runtime_root}/pre-stop"
                     stop_marker_temporary="${stop_marker}.tmp"
@@ -481,7 +495,7 @@ spec:
             - sh
             - -ec
             - |
-              runtime_root=/run/openldap-migration
+              runtime_root=/tmp/openldap-migration
               slapd_pid_file="${runtime_root}/slapd.pid"
               slapd_pid_temporary="${slapd_pid_file}.tmp"
               stop_marker="${runtime_root}/pre-stop"

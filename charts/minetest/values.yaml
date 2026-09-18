@@ -22,7 +22,7 @@ initContainer:
   image:
     repository: docker.io/library/alpine
     # renovate: image=docker.io/library/alpine
-    tag: 3.24.1
+    tag: 3.24.2
     pullPolicy: IfNotPresent
 
 command:

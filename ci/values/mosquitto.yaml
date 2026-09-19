@@ -1,0 +1,4 @@
+persistence:
+  enabled: true
+podSecurityContext:
+  fsGroup: 1000

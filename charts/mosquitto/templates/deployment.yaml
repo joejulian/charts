@@ -5,6 +5,10 @@ metadata:
   labels:
     {{- include "mosquitto.labels" . | nindent 4 }}
 spec:
+  {{- if .Values.persistence.enabled }}
+  strategy:
+    type: Recreate
+  {{- end }}
   selector:
     matchLabels:
       {{- include "mosquitto.selectorLabels" . | nindent 6 }}
@@ -49,6 +53,10 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
+            {{- if .Values.persistence.enabled }}
+            - name: data
+              mountPath: /mosquitto/data
+            {{- end }}
             - name: config
               mountPath: /mosquitto/config
               readOnly: true
@@ -56,6 +64,11 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
       volumes:
+        {{- if .Values.persistence.enabled }}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.existingClaim | default (include "mosquitto.fullname" .) }}
+        {{- end }}
         - name: config
           configMap:
             name: {{ include "mosquitto.fullname" . }}

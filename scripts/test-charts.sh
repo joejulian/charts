@@ -413,6 +413,16 @@ run_chart_tests() {
   local namespace="$3"
 
   case "${chart_name}" in
+    mosquitto)
+      kubectl -n "${namespace}" exec "deployment/${release_name}" -- \
+        mosquitto_pub -h 127.0.0.1 -t ci/retention -m retained-fixture -q 1 -r
+      kubectl -n "${namespace}" rollout restart "deployment/${release_name}"
+      kubectl -n "${namespace}" rollout status "deployment/${release_name}" --timeout=5m
+      local retained
+      retained="$(kubectl -n "${namespace}" exec "deployment/${release_name}" -- \
+        mosquitto_sub -h 127.0.0.1 -t ci/retention -C 1 -W 10)"
+      [[ "${retained}" == "retained-fixture" ]] || return 1
+      ;;
     cyrus-imap)
       assert_cyrus_imap_ready "${namespace}"
       assert_cyrus_imap_mount_guard "${namespace}"

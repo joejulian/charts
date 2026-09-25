@@ -60,3 +60,19 @@ max_level() {
     echo "${current}"
   fi
 }
+
+# Dependency ranges such as ~4 and ~5.1.0 still encode a major transition.
+# Keep application version parsing strict: four-part app tags are not SemVer.
+dependency_change_level() {
+  local base="$1" current="$2" value normalized
+  local -a versions=()
+  for value in "${base}" "${current}"; do
+    if [[ "${value}" =~ ^[\~\^]?v?([0-9]+)(\.([0-9]+))?(\.([0-9]+))?$ ]]; then
+      normalized="${BASH_REMATCH[1]}.${BASH_REMATCH[3]:-0}.${BASH_REMATCH[5]:-0}"
+      versions+=("${normalized}")
+    else
+      versions+=("${value}")
+    fi
+  done
+  version_change_level "${versions[0]}" "${versions[1]}"
+}

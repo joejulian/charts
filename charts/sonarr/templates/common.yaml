@@ -1,54 +1,40 @@
-{{/* Make sure all variables are set properly */}}
 {{- include "bjw-s.common.loader.init" . }}
-
-{{/* Append the hardcoded settings */}}
-{{- define "sonarr.harcodedValues" -}}
-{{ if .Values.metrics.enabled }}
-additionalContainers:
-  exporter:
-    name: exporter
-    image: "{{ .Values.metrics.exporter.image.repository }}:{{ .Values.metrics.exporter.image.tag }}"
-    imagePullPolicy: {{ .Values.metrics.exporter.image.pullPolicy }}
-    args: ["sonarr"]
-    env:
-      - name: URL
-        value: "http://localhost"
-      - name: CONFIG
-        value: "/config/config.xml"
-      - name: PORT
-        value: "{{ .Values.metrics.exporter.env.port }}"
-      - name: ENABLE_ADDITIONAL_METRICS
-        value: "{{ .Values.metrics.exporter.env.additionalMetrics }}"
-      - name: ENABLE_UNKNOWN_QUEUE_ITEMS
-        value: "{{ .Values.metrics.exporter.env.unknownQueueItems }}"
-    ports:
-      - name: metrics
-        containerPort: {{ .Values.metrics.exporter.env.port }}
-    volumeMounts:
-      {{ if .Values.persistence.config.enabled }}
-      - name: config
-        mountPath: /config
-        readOnly: true
-        {{ if .Values.persistence.config.subPath }}
-        subPath: {{ .Values.persistence.config.subPath }}
-        {{ end }}
-      {{ end }}
-    {{- if .Values.metrics.exporter.resources }}
-    resources:
-      {{- toYaml .Values.metrics.exporter.resources | nindent 6 }}
-    {{- end }}
-
+{{- define "sonarr.hardcodedValues" -}}
+controllers:
+  main:
+    containers:
+      main:
+        image:
+          tag: {{ .Values.controllers.main.containers.main.image.tag | default .Chart.AppVersion | quote }}
+      {{- if .Values.metrics.enabled }}
+      exporter:
+        image:
+          repository: {{ .Values.metrics.exporter.image.repository }}
+          tag: {{ .Values.metrics.exporter.image.tag | quote }}
+          pullPolicy: {{ .Values.metrics.exporter.image.pullPolicy }}
+        args: ["sonarr"]
+        env:
+          URL: "http://localhost:8989"
+          CONFIG: /config/config.xml
+          PORT: {{ .Values.metrics.exporter.env.port | quote }}
+          ENABLE_ADDITIONAL_METRICS: {{ .Values.metrics.exporter.env.additionalMetrics | quote }}
+          ENABLE_UNKNOWN_QUEUE_ITEMS: {{ .Values.metrics.exporter.env.unknownQueueItems | quote }}
+        {{- with .Values.metrics.exporter.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      {{- end }}
+{{- if .Values.metrics.enabled }}
 service:
   metrics:
     enabled: true
+    controller: main
     ports:
       metrics:
         enabled: true
         protocol: TCP
         port: {{ .Values.metrics.exporter.env.port }}
-{{ end }}
+{{- end }}
 {{- end -}}
-{{- $_ := mergeOverwrite .Values (include "sonarr.harcodedValues" . | fromYaml) -}}
-
-{{/* Render the templates */}}
+{{- $_ := mergeOverwrite .Values (include "sonarr.hardcodedValues" . | fromYaml) -}}
 {{ include "bjw-s.common.loader.generate" . }}

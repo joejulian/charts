@@ -3,7 +3,7 @@
 normalize_semver() {
   local value="${1#v}"
 
-  if [[ "${value}" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+  if [[ "${value}" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)([-+][0-9A-Za-z.-]+)?$ ]]; then
     printf '%s %s %s\n' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}"
     return 0
   fi
@@ -41,8 +41,12 @@ version_change_level() {
     echo 2
   elif (( current_patch != base_patch )); then
     echo 1
-  else
+  elif [[ "${base#v}" == "${current#v}" ]]; then
     echo 0
+  else
+    # A package revision or other SemVer suffix changed without changing the
+    # three-part upstream version.
+    echo 1
   fi
 }
 

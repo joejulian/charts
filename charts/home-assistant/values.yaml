@@ -46,6 +46,21 @@ controllers:
           # -- (bool) Privileged securityContext may be required if USB devices are accessed directly through the host machine
           privileged: false
 
+# -- Pre-pull and unpack the next Home Assistant image before upgrading the
+# Recreate controller. The hook inherits the main controller's nodeSelector,
+# tolerations, affinity, imagePullSecrets, runtimeClassName, schedulerName, and
+# priorityClassName, but it does not mount the application's volumes or devices.
+imagePrePull:
+  enabled: false
+  # -- Stop waiting without changing the existing workload when the image has
+  # not become runnable within this many seconds.
+  activeDeadlineSeconds: 4500
+  command:
+    - /usr/bin/env
+    - bash
+    - -c
+    - exit 0
+
 # -- Configures service settings for the chart.
 # @default -- See values.yaml
 service:

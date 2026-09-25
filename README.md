@@ -26,6 +26,9 @@ Deprecated:
 - Releases package changed charts, push them to `oci://ghcr.io/joejulian/charts`, and create per-chart git tags plus GitHub releases.
 - Renovate runs on a schedule in GitHub Actions, tracks chart image sources, updates `appVersion`, and runs `scripts/bump-chart.sh` so chart version bumps happen in the same PR before CI runs.
 - CI verifies that any `appVersion` change includes an appropriate chart version bump.
+- Charts that preserve compatibility across app feature releases may set the
+  `appVersionBumpPolicy: patch` annotation; CI then requires a chart patch for
+  app version changes while retaining dependency bump requirements.
 - If the `RENOVATE_TOKEN` actor is allowed to merge, safe dependency updates can automerge after CI. Otherwise the PR remains manual.
 - Dependabot keeps GitHub Actions dependencies current.
 

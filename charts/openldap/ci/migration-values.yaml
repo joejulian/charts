@@ -1,0 +1,39 @@
+podSecurityContext:
+  fsGroup: 439
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  runAsGroup: 439
+  runAsNonRoot: true
+  runAsUser: 439
+  seccompProfile:
+    type: RuntimeDefault
+migration:
+  databaseDirectory: /data/ci-database
+configfiles:
+  slapd.conf: |
+    include         /etc/openldap/schema/core.schema
+    pidfile         /run/openldap/slapd.pid
+    argsfile        /run/openldap/slapd.args
+    database        mdb
+    maxsize         1073741824
+    suffix          "dc=my-domain,dc=com"
+    rootdn          "cn=Manager,dc=my-domain,dc=com"
+    rootpw          secret
+    directory       /data/ci-database
+    index           objectClass eq
+tests:
+  migration:
+    enabled: true
+    baseDN: dc=my-domain,dc=com
+    bindDN: cn=Manager,dc=my-domain,dc=com
+    bindPassword: secret
+    ldif: |
+      dn: dc=my-domain,dc=com
+      objectClass: top
+      objectClass: dcObject
+      objectClass: organization
+      o: Example Organization
+      dc: my-domain

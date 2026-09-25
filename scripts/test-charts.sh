@@ -290,12 +290,139 @@ assert_hostpath_pv_remediator_render_guards() {
     --set "image.digest=${digest}" >/dev/null
 }
 
+assert_home_assistant_image_prepull_render() {
+  local chart_dir="$1"
+  local chart_app_version
+  local fixture="${REPO_ROOT}/ci/fixtures/home-assistant/prepull-values.yaml"
+  local default_image_render
+  local install_render
+  local upgrade_render
+
+  install_render="$(helm template heist-initial "${chart_dir}" --values "${fixture}")"
+  if grep -Fq '"helm.sh/hook": pre-upgrade' <<<"${install_render}"; then
+    echo "home-assistant rendered its image pre-pull hook during initial install" >&2
+    return 1
+  fi
+
+  upgrade_render="$(helm template --is-upgrade heist-upgrade "${chart_dir}" --values "${fixture}")"
+  for expected in \
+    'kind: Job' \
+    'name: heist-upgrade-image-prepull' \
+    '"helm.sh/hook": pre-upgrade' \
+    '"helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded' \
+    'activeDeadlineSeconds: 4500' \
+    'example.invalid/usb-node: "true"' \
+    'ghcr.io/joejulian/container-images/home-assistant:heist-movie@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'; do
+    if ! grep -Fq "${expected}" <<<"${upgrade_render}"; then
+      echo "home-assistant image pre-pull render is missing: ${expected}" >&2
+      return 1
+    fi
+  done
+
+  chart_app_version="$(python3 "${REPO_ROOT}/scripts/chart_yaml.py" json --file "${chart_dir}/Chart.yaml" | jq -r .appVersion)"
+  default_image_render="$(helm template --is-upgrade heist-default "${chart_dir}" --set imagePrePull.enabled=true)"
+  if ! grep -Fq "ghcr.io/joejulian/container-images/home-assistant:${chart_app_version}" \
+    <<<"${default_image_render}"; then
+    echo "home-assistant image pre-pull did not default to chart.appVersion" >&2
+    return 1
+  fi
+}
+
+assert_kadalu_component_boundaries() {
+  local immutable_operator_render
+  local operator_render
+  local migration_render
+  local csi_render
+  local csi_handoff_render
+  local storage_render
+  local storage_handoff_render
+
+  operator_render="$(helm template operator "${REPO_ROOT}/charts/kadalu-operator" \
+    --namespace kadalu)"
+  immutable_operator_render="$(helm template operator "${REPO_ROOT}/charts/kadalu-operator" \
+    --namespace kadalu \
+    --set-string 'operator.image.fullOverride=registry.example.invalid/kadalu-operator:test@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')"
+  migration_render="$(helm template operator "${REPO_ROOT}/charts/kadalu-operator" \
+    --namespace kadalu --set migration.retainComponentRBAC=true)"
+  csi_render="$(helm template csi "${REPO_ROOT}/charts/kadalu-csi" \
+    --namespace kadalu)"
+  csi_handoff_render="$(helm template csi "${REPO_ROOT}/charts/kadalu-csi" \
+    --namespace kadalu --set migration.retainDuringOperatorHandoff=true)"
+  storage_render="$(helm template storage "${REPO_ROOT}/charts/kadalu-storage" \
+    --namespace kadalu)"
+  storage_handoff_render="$(helm template storage "${REPO_ROOT}/charts/kadalu-storage" \
+    --namespace kadalu --set migration.retainDuringOperatorHandoff=true)"
+
+  if grep -Eq '^kind: (DaemonSet|StatefulSet|CSIDriver)$' \
+    <<<"${csi_render}${storage_render}"; then
+    echo "Kadalu component charts must not take generated workload ownership" >&2
+    return 1
+  fi
+  if grep -Fq 'helm.sh/resource-policy: keep' <<<"${operator_render}"; then
+    echo "Kadalu operator keep policy escaped the explicit migration gate" >&2
+    return 1
+  fi
+  if grep -Fq 'helm.sh/resource-policy: keep' <<<"${csi_render}${storage_render}"; then
+    echo "Kadalu component keep policy escaped the explicit migration gate" >&2
+    return 1
+  fi
+  if [[ "$(grep -Fc 'helm.sh/resource-policy: keep' <<<"${csi_handoff_render}")" -ne 12 ]]; then
+    echo "Kadalu CSI handoff must retain all 12 adopted resources" >&2
+    return 1
+  fi
+  if [[ "$(grep -Fc 'helm.sh/resource-policy: keep' <<<"${storage_handoff_render}")" -ne 1 ]]; then
+    echo "Kadalu storage handoff must retain its adopted service account" >&2
+    return 1
+  fi
+  if ! grep -Fq 'image: registry.example.invalid/kadalu-operator:test@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' \
+    <<<"${immutable_operator_render}"; then
+    echo "Kadalu operator immutable full image override was not preserved exactly" >&2
+    return 1
+  fi
+  for expected in \
+    'helm.sh/resource-policy: keep' \
+    'name: kadalu-csi-nodeplugin' \
+    'name: kadalu-csi-provisioner' \
+    'name: kadalu-server-sa'; do
+    if ! grep -Fq "${expected}" <<<"${migration_render}"; then
+      echo "Kadalu migration render is missing: ${expected}" >&2
+      return 1
+    fi
+  done
+  for expected in \
+    'name: kadalu-csi-config' \
+    'driverImage:' \
+    'nodeDriverRegistrarImage:' \
+    'loggingImage:'; do
+    if ! grep -Fq "${expected}" <<<"${csi_render}"; then
+      echo "Kadalu CSI contract is missing: ${expected}" >&2
+      return 1
+    fi
+  done
+  for expected in 'name: kadalu-server-config' 'image:'; do
+    if ! grep -Fq "${expected}" <<<"${storage_render}"; then
+      echo "Kadalu storage contract is missing: ${expected}" >&2
+      return 1
+    fi
+  done
+}
+
 run_chart_tests() {
   local chart_name="$1"
   local release_name="$2"
   local namespace="$3"
 
   case "${chart_name}" in
+    mosquitto)
+      kubectl -n "${namespace}" exec "deployment/${release_name}" -- \
+        mosquitto_pub -h 127.0.0.1 -t ci/retention -m retained-fixture -q 1 -r
+      kubectl -n "${namespace}" rollout restart "deployment/${release_name}"
+      kubectl -n "${namespace}" rollout status "deployment/${release_name}" --timeout=5m
+      local retained
+      retained="$(kubectl -n "${namespace}" exec "deployment/${release_name}" -- \
+        mosquitto_sub -h 127.0.0.1 -t ci/retention -C 1 -W 10)"
+      [[ "${retained}" == "retained-fixture" ]] || return 1
+      ;;
     cyrus-imap)
       assert_cyrus_imap_ready "${namespace}"
       assert_cyrus_imap_mount_guard "${namespace}"
@@ -385,6 +512,12 @@ test_chart() {
   build_dependencies "${chart_dir}"
   if [[ "${chart_name}" == "hostpath-pv-remediator" ]]; then
     assert_hostpath_pv_remediator_render_guards "${chart_dir}" "${values_file}"
+  fi
+  if [[ "${chart_name}" == "home-assistant" ]]; then
+    assert_home_assistant_image_prepull_render "${chart_dir}"
+  fi
+  if [[ "${chart_name}" == "kadalu-operator" ]]; then
+    assert_kadalu_component_boundaries
   fi
   kubectl get namespace "${namespace}" >/dev/null 2>&1 || kubectl create namespace "${namespace}"
   setup_image_pull_secret "${namespace}"

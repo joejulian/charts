@@ -7,7 +7,7 @@
   ],
   labels: ["dependencies"],
   automergeType: "pr",
-  platformAutomerge: true,
+  platformAutomerge: false,
   prHourlyLimit: 0,
   prConcurrentLimit: 0,
   branchConcurrentLimit: 0,
@@ -20,6 +20,12 @@
     {
       matchDatasources: ["docker"],
       matchUpdateTypes: ["minor", "patch", "digest"],
+      automerge: true,
+      addLabels: ["automerge"],
+    },
+    {
+      matchManagers: ["helmv3"],
+      matchUpdateTypes: ["minor", "patch"],
       automerge: true,
       addLabels: ["automerge"],
     },

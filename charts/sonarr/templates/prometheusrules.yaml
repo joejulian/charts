@@ -6,7 +6,7 @@ kind: PrometheusRule
 metadata:
   name: {{ include "bjw-s.common.lib.chart.names.fullname" . }}
   labels:
-    {{- include "bjw-s.common.lib.controller.metadata.labels" . | nindent 4 }}
+    {{- include "bjw-s.common.lib.metadata.allLabels" . | nindent 4 }}
     {{- with .Values.metrics.prometheusRule.labels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}

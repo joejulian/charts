@@ -1,0 +1,30 @@
+operator:
+  enabled: true
+  image:
+    fullOverride: ""
+    repository: ghcr.io/joejulian/kadalu-operator
+    tag: "1.4.0-rc.5"
+    digest: ""
+    pullPolicy: IfNotPresent
+  progressDeadlineSeconds: 86400
+  resources: {}
+  verbose: "no"
+
+runtimeDefaults:
+  version: "1.4.0-rc.5"
+  imageRegistry: ghcr.io
+  imageRepository: joejulian
+  csiSidecarRegistry: registry.k8s.io
+  # renovate: image=docker.io/library/busybox
+  loggingImage: docker.io/library/busybox:1.38.0@sha256:fd7dc98638c8e305f4dc34e979f1c0fdfdcaeb0fbf8fcff77ae834b6da3d7e6e
+  kubeletDir: /var/lib/kubelet
+  kubernetesDistro: kubernetes
+
+componentConfigMaps:
+  csi: kadalu-csi-config
+  server: kadalu-server-config
+
+migration:
+  # One upgrade may retain the old monolithic chart's component RBAC before
+  # the CSI and storage releases adopt it. Disable after both adoptions.
+  retainComponentRBAC: false

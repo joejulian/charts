@@ -1,0 +1,190 @@
+{{- if and .Values.operator.enabled .Values.migration.retainComponentRBAC }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kadalu-csi-nodeplugin
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    {{- include "kadalu-operator.keepAnnotations" . | nindent 4 }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kadalu-csi-provisioner
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    {{- include "kadalu-operator.keepAnnotations" . | nindent 4 }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kadalu-server-sa
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    {{- include "kadalu-operator.keepAnnotations" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kadalu-csi-external-attacher
+  annotations:
+    {{- include "kadalu-operator.keepAnnotations" . | nindent 4 }}
+rules: []
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kadalu-csi-external-attacher
+  annotations:
+    {{- include "kadalu-operator.keepAnnotations" . | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: kadalu-csi-provisioner
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kadalu-csi-external-attacher
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kadalu-csi-external-provisioner
+  annotations:
+    {{- include "kadalu-operator.keepAnnotations" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "create", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["list", "watch", "create", "update", "patch"]
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshots"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: ["snapshot.storage.k8s.io"]
+    resources: ["volumesnapshotcontents"]
+    verbs: ["get", "list"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["csinodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kadalu-csi-external-provisioner
+  annotations:
+    {{- include "kadalu-operator.keepAnnotations" . | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: kadalu-csi-provisioner
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kadalu-csi-external-provisioner
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kadalu-csi-external-resizer
+  annotations:
+    {{- include "kadalu-operator.keepAnnotations" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "patch"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims/status"]
+    verbs: ["patch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["list", "watch", "create", "update", "patch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattributesclasses"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kadalu-csi-external-resizer
+  annotations:
+    {{- include "kadalu-operator.keepAnnotations" . | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: kadalu-csi-provisioner
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kadalu-csi-external-resizer
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kadalu-csi-nodeplugin
+  annotations:
+    {{- include "kadalu-operator.keepAnnotations" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kadalu-csi-nodeplugin
+  annotations:
+    {{- include "kadalu-operator.keepAnnotations" . | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: kadalu-csi-nodeplugin
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kadalu-csi-nodeplugin
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kadalu-csi-leader-election
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    {{- include "kadalu-operator.keepAnnotations" . | nindent 4 }}
+rules:
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "watch", "list", "delete", "update", "create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kadalu-csi-leader-election
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    {{- include "kadalu-operator.keepAnnotations" . | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: kadalu-csi-provisioner
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: kadalu-csi-leader-election
+{{- end }}

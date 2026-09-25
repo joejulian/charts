@@ -30,7 +30,7 @@ chart_yaml_value() {
 required_chart_bump_level() {
   local chart_dir="$1"
   local relative_chart_dir="${chart_dir#"${REPO_ROOT}"/}"
-  local base_chart head_chart dep_name dep_version base_app_version head_app_version level
+  local base_chart head_chart dep_name dep_version base_app_version head_app_version app_version_bump_policy level
   declare -A base_deps=()
   declare -A head_deps=()
 
@@ -39,6 +39,20 @@ required_chart_bump_level() {
   base_app_version="$(jq -r '.appVersion' <<<"${base_chart}")"
   head_app_version="$(jq -r '.appVersion' <<<"${head_chart}")"
   level="$(version_change_level "${base_app_version}" "${head_app_version}")"
+  app_version_bump_policy="$(jq -r '.annotations.appVersionBumpPolicy // ""' <<<"${head_chart}")"
+
+  case "${app_version_bump_policy}" in
+    "") ;;
+    patch)
+      if (( level > 0 )); then
+        level=1
+      fi
+      ;;
+    *)
+      echo "Chart ${relative_chart_dir}: unsupported appVersionBumpPolicy ${app_version_bump_policy}" >&2
+      return 1
+      ;;
+  esac
 
   while IFS=$'\t' read -r dep_name dep_version; do
     [[ -n "${dep_name}" ]] || continue
@@ -76,8 +90,7 @@ version_gt() {
 }
 
 main() {
-  local chart_dir relative_chart_dir chart_name base_chart_version head_chart_version required_level head_chart
-  local base_chart_major base_chart_minor base_chart_patch head_chart_major head_chart_minor head_chart_patch
+  local chart_dir relative_chart_dir chart_name base_chart_version head_chart_version required_level actual_level head_chart
   local failed=0
   local -a changed_charts
 
@@ -97,10 +110,6 @@ main() {
     fi
 
     required_level="$(required_chart_bump_level "${chart_dir}")"
-    if [[ "${required_level}" == "0" ]]; then
-      required_level=1
-    fi
-
     base_chart_version="$(chart_yaml_value "${BASE_REF}" "${relative_chart_dir}" version)"
     head_chart="$(chart_json_from_file "${chart_dir}/Chart.yaml")"
     head_chart_version="$(jq -r '.version' <<<"${head_chart}")"
@@ -111,30 +120,14 @@ main() {
       continue
     fi
 
-    if normalize_semver "${base_chart_version}" >/dev/null && normalize_semver "${head_chart_version}" >/dev/null; then
-      read -r base_chart_major base_chart_minor base_chart_patch <<<"$(normalize_semver "${base_chart_version}")"
-      read -r head_chart_major head_chart_minor head_chart_patch <<<"$(normalize_semver "${head_chart_version}")"
-
-      case "${required_level}" in
-        3)
-          if (( head_chart_major <= base_chart_major )); then
-            echo "Chart ${chart_name}: major Chart.yaml change requires a chart major bump (${base_chart_version} -> ${head_chart_version})."
-            failed=1
-          fi
-          ;;
-        2)
-          if (( head_chart_major != base_chart_major || head_chart_minor <= base_chart_minor )); then
-            echo "Chart ${chart_name}: minor Chart.yaml change requires a chart minor bump (${base_chart_version} -> ${head_chart_version})."
-            failed=1
-          fi
-          ;;
-        1)
-          if (( head_chart_major != base_chart_major || head_chart_minor != base_chart_minor || head_chart_patch <= base_chart_patch )); then
-            echo "Chart ${chart_name}: patch Chart.yaml change requires a chart patch bump (${base_chart_version} -> ${head_chart_version})."
-            failed=1
-          fi
-          ;;
-      esac
+    if (( required_level > 0 )) && \
+      normalize_semver "${base_chart_version}" >/dev/null && \
+      normalize_semver "${head_chart_version}" >/dev/null; then
+      actual_level="$(version_change_level "${base_chart_version}" "${head_chart_version}")"
+      if (( actual_level != required_level )); then
+        echo "Chart ${chart_name}: appVersion or dependency changes require a level ${required_level} chart bump (${base_chart_version} -> ${head_chart_version})."
+        failed=1
+      fi
     fi
   done
 

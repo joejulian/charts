@@ -20,9 +20,15 @@ def load_chart(path: str | None) -> dict:
         if name:
             deps[name] = str(dep.get("version", "") or "")
 
+    annotations = {
+        str(key): str(value)
+        for key, value in (data.get("annotations", {}) or {}).items()
+    }
+
     return {
         "version": str(data.get("version", "") or ""),
         "appVersion": str(data.get("appVersion", "") or ""),
+        "annotations": annotations,
         "dependencies": deps,
     }
 

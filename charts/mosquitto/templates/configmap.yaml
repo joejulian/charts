@@ -7,6 +7,11 @@ metadata:
 data:
   mosquitto.conf: |
     log_dest stdout
+    {{- if .Values.persistence.enabled }}
+    persistence true
+    persistence_location /mosquitto/data/
+    autosave_interval {{ .Values.persistence.autosaveInterval }}
+    {{- end }}
     per_listener_settings {{ .Values.mosquitto.perListenerSettings }}
     listener {{ .Values.service.ports.mqtt.port }}
     allow_anonymous {{ .Values.mosquitto.auth.allowAnonymous }}

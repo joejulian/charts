@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.configMapName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kadalu-csi.labels" . | nindent 4 }}
+data:
+  version: {{ .Values.version | quote }}
+  driverImage: {{ .Values.images.driver | quote }}
+  nodeDriverRegistrarImage: {{ .Values.images.nodeDriverRegistrar | quote }}
+  provisionerImage: {{ .Values.images.provisioner | quote }}
+  resizerImage: {{ .Values.images.resizer | quote }}
+  livenessProbeImage: {{ .Values.images.livenessProbe | quote }}
+  loggingImage: {{ .Values.images.logging | quote }}
+  kubeletDir: {{ .Values.kubeletDir | quote }}
+  kubernetesDistro: {{ .Values.kubernetesDistro | quote }}
+  verbose: {{ .Values.verbose | quote }}

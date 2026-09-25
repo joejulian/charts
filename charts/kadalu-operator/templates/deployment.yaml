@@ -1,0 +1,99 @@
+{{- if .Values.operator.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: operator
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kadalu-operator.labels" . | nindent 4 }}
+    app.kubernetes.io/component: operator
+spec:
+  replicas: 1
+  progressDeadlineSeconds: {{ .Values.operator.progressDeadlineSeconds }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      name: kadalu
+  template:
+    metadata:
+      labels:
+        name: kadalu
+        app.kubernetes.io/part-of: kadalu
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8050"
+    spec:
+      serviceAccountName: kadalu-operator
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: kadalu-operator
+          image: {{ include "kadalu-operator.image" . }}
+          imagePullPolicy: {{ .Values.operator.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - test -f /tmp/operator-ready
+            timeoutSeconds: 3
+            periodSeconds: 5
+            failureThreshold: 1
+          env:
+            - name: WATCH_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPERATOR_NAME
+              value: kadalu-operator
+            - name: IMAGES_HUB
+              value: {{ .Values.runtimeDefaults.imageRegistry | quote }}
+            - name: DOCKER_USER
+              value: {{ .Values.runtimeDefaults.imageRepository | quote }}
+            - name: CSI_SIDECAR_REGISTRY
+              value: {{ .Values.runtimeDefaults.csiSidecarRegistry | quote }}
+            - name: BUSYBOX_IMAGE
+              value: {{ .Values.runtimeDefaults.loggingImage | quote }}
+            - name: KADALU_VERSION
+              value: {{ .Values.runtimeDefaults.version | quote }}
+            - name: KADALU_NAMESPACE
+              value: {{ .Release.Namespace | quote }}
+            - name: KUBELET_DIR
+              value: {{ .Values.runtimeDefaults.kubeletDir | quote }}
+            - name: K8S_DIST
+              value: {{ .Values.runtimeDefaults.kubernetesDistro | quote }}
+            - name: VERBOSE
+              value: {{ .Values.operator.verbose | quote }}
+            - name: KADALU_CSI_CONFIG_MAP
+              value: {{ .Values.componentConfigMaps.csi | quote }}
+            - name: KADALU_SERVER_CONFIG_MAP
+              value: {{ .Values.componentConfigMaps.server | quote }}
+          resources:
+            {{- toYaml .Values.operator.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+{{- end }}

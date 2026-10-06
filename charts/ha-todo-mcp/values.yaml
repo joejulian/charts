@@ -1,0 +1,44 @@
+image:
+  repository: ghcr.io/joejulian/ha-todo-mcp
+  tag: ""
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+# Create this Secret separately. All application settings are supplied by it.
+existingSecret: ha-todo-mcp
+podAnnotations: {}
+env: {}
+resources:
+  requests:
+    cpu: 25m
+    memory: 128Mi
+  limits:
+    memory: 512Mi
+
+persistence:
+  enabled: true
+  size: 1Gi
+  storageClass: ""
+  existingClaim: ""
+
+ingress:
+  enabled: false
+  host: ""
+  tlsSecretName: ""
+  classes: []
+  annotations: {}
+  paths:
+    - /todo-bridge
+    - /.well-known/oauth-authorization-server/todo-bridge
+    - /.well-known/oauth-protected-resource/todo-bridge/mcp
+
+networkPolicy:
+  enabled: false
+  ingressFrom: []
+  egress: []
+  # Optional same-namespace HA rule; only this bridge can reach the selected HA pod.
+  homeAssistantSelector: {}
+  homeAssistantPort: 8123
+
+# Used for generic CI fixtures or supported companion resources.
+extraObjects: []

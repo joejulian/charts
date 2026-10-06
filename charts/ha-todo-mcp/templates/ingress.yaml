@@ -1,0 +1,34 @@
+{{- if .Values.ingress.enabled }}
+{{- range $index, $class := .Values.ingress.classes }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "ha-todo-mcp.name" $ }}-{{ $index }}
+  labels:
+    {{- include "ha-todo-mcp.labels" $ | nindent 4 }}
+  {{- with $.Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ $class | quote }}
+  tls:
+    - hosts:
+        - {{ required "ingress.host is required" $.Values.ingress.host | quote }}
+      secretName: {{ required "ingress.tlsSecretName is required" $.Values.ingress.tlsSecretName }}
+  rules:
+    - host: {{ $.Values.ingress.host | quote }}
+      http:
+        paths:
+          {{- range $.Values.ingress.paths }}
+          - path: {{ . | quote }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "ha-todo-mcp.name" $ }}
+                port:
+                  name: http
+          {{- end }}
+{{- end }}
+{{- end }}

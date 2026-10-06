@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "ha-todo-mcp.name" . }}-test
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  {{- with .Values.imagePullSecrets }}
+  imagePullSecrets:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: test
+      image: {{ include "ha-todo-mcp.image" . | quote }}
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: [ALL]
+      command: [python, -c]
+      args:
+        - |
+          import json, urllib.request, urllib.error, urllib.parse
+          base = 'http://{{ include "ha-todo-mcp.name" . }}:8000'
+          with urllib.request.urlopen(base + '/readyz', timeout=20) as response:
+              assert json.load(response)['status'] == 'ready'
+          with urllib.request.urlopen(base + '/.well-known/oauth-protected-resource/todo-bridge/mcp', timeout=10) as response:
+              resource = json.load(response)['resource']
+              assert resource.endswith('/todo-bridge/mcp')
+          # Direct Service access must preserve the public Host, as ingress does.
+          headers = {'Content-Type': 'application/json', 'Host': urllib.parse.urlsplit(resource).netloc}
+          request = urllib.request.Request(base + '/todo-bridge/mcp', data=b'{}', headers=headers)
+          try:
+              urllib.request.urlopen(request, timeout=10)
+          except urllib.error.HTTPError as error:
+              assert error.code == 401, error.code
+          else:
+              raise AssertionError('Unauthenticated MCP request succeeded')

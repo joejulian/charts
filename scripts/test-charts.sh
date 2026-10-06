@@ -413,6 +413,9 @@ run_chart_tests() {
   local namespace="$3"
 
   case "${chart_name}" in
+    ha-todo-mcp)
+      helm test "${release_name}" -n "${namespace}" --timeout 5m --logs
+      ;;
     mosquitto)
       kubectl -n "${namespace}" exec "deployment/${release_name}" -- \
         mosquitto_pub -h 127.0.0.1 -t ci/retention -m retained-fixture -q 1 -r

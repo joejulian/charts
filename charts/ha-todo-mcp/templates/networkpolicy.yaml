@@ -1,0 +1,39 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "ha-todo-mcp.name" . }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "ha-todo-mcp.selector" . | nindent 6 }}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        {{- toYaml .Values.networkPolicy.ingressFrom | nindent 8 }}
+      ports:
+        - protocol: TCP
+          port: 8000
+  egress:
+    {{- toYaml .Values.networkPolicy.egress | nindent 4 }}
+{{- with .Values.networkPolicy.homeAssistantSelector }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "ha-todo-mcp.name" $ }}-backend
+spec:
+  podSelector:
+    matchLabels:
+      {{- toYaml . | nindent 6 }}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "ha-todo-mcp.selector" $ | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ $.Values.networkPolicy.homeAssistantPort }}
+{{- end }}
+{{- end }}

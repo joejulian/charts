@@ -39,6 +39,7 @@ spec:
         - name: server
           image: {{ printf "%s:%s" .Values.image.repository .Values.image.tag | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          workingDir: {{ .Values.workingDir | quote }}
           command:
             {{- toYaml .Values.command | nindent 12 }}
           args:

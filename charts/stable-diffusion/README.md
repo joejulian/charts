@@ -16,8 +16,10 @@ Missing CPU or memory requests/limits are rejected by the values schema.
 Keep each host service that previously ran these models disabled. Never raise
 memory limits above safe node capacity simply to get a large request to finish.
 
-The default probes check the listener; validation should also inspect the
-capabilities API, loaded component paths, GPU backend, and effective cgroup
-limits. CI uses a small HTTP fixture to exercise installation and upgrade
+Startup and readiness probes check the capabilities API; liveness checks the
+listener so a slow request does not restart inference. The working directory
+is `/sd.cpp`: older upstream images default to `/`, where relative LoRA
+discovery encounters protected `/proc` files and makes capabilities return 500.
+Validation should also inspect component paths, GPU backend, and cgroup limits. CI uses a small HTTP fixture to exercise installation and upgrade
 without downloading weights or requiring a GPU. It also checks the container's
 actual cgroup memory and CPU limits and the read-only model mount.

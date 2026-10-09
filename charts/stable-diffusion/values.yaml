@@ -4,6 +4,8 @@ image:
   tag: master-vulkan@sha256:0ab8e0e0ef3c51db7132f5e15c9e5615a529ea4156573409e8c4b4c97ee1ac37
   pullPolicy: IfNotPresent
 imagePullSecrets: []
+# Relative LoRA discovery must not traverse the container filesystem root.
+workingDir: /sd.cpp
 command: [/sd-server]
 # Supply model arguments separately; the chart never downloads model weights.
 args: []
@@ -34,12 +36,14 @@ temporaryStorage:
 service:
   port: 8080
 startupProbe:
-  tcpSocket:
+  httpGet:
+    path: /sdcpp/v1/capabilities
     port: http
   periodSeconds: 10
   failureThreshold: 90
 readinessProbe:
-  tcpSocket:
+  httpGet:
+    path: /sdcpp/v1/capabilities
     port: http
   periodSeconds: 10
   timeoutSeconds: 5

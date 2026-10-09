@@ -1,0 +1,13 @@
+apiVersion: v2
+name: stable-diffusion
+description: Resource-bounded stable-diffusion.cpp image generation server
+type: application
+version: 1.0.0
+appVersion: "master-920-2f88688"
+home: https://github.com/leejet/stable-diffusion.cpp
+sources:
+  - https://github.com/leejet/stable-diffusion.cpp
+maintainers:
+  - name: joejulian
+annotations:
+  org.opencontainers.image.source: https://github.com/joejulian/charts

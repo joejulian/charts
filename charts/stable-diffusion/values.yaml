@@ -1,0 +1,66 @@
+image:
+  repository: ghcr.io/leejet/stable-diffusion.cpp
+  # Published upstream Vulkan image for commit 2f886889e6e8b78738d6b87f7191f6018557c551.
+  tag: master-vulkan@sha256:0ab8e0e0ef3c51db7132f5e15c9e5615a529ea4156573409e8c4b4c97ee1ac37
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+command: [/sd-server]
+# Supply model arguments separately; the chart never downloads model weights.
+args: []
+env:
+  - name: XDG_CACHE_HOME
+    value: /tmp/cache
+resources:
+  requests:
+    cpu: "1"
+    memory: 2Gi
+  limits:
+    cpu: "4"
+    memory: 16Gi
+nodeSelector: {}
+tolerations: []
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+# Existing models are always mounted read-only. An empty claim uses emptyDir
+# for isolated fixtures or servers whose model paths are configured elsewhere.
+models:
+  existingClaim: ""
+temporaryStorage:
+  sizeLimit: 256Mi
+service:
+  port: 8080
+startupProbe:
+  tcpSocket:
+    port: http
+  periodSeconds: 10
+  failureThreshold: 90
+readinessProbe:
+  tcpSocket:
+    port: http
+  periodSeconds: 10
+  timeoutSeconds: 5
+livenessProbe:
+  tcpSocket:
+    port: http
+  periodSeconds: 30
+  timeoutSeconds: 5
+  failureThreshold: 5
+ingress:
+  enabled: false
+  className: ""
+  host: ""
+  annotations: {}
+networkPolicy:
+  enabled: false
+  ingressFrom: []
+# Additional declarative resources, such as a retained local PV and its PVC.
+extraObjects: []
+tests:
+  enabled: true
+  image:
+    repository: ghcr.io/joejulian/container-images/busybox
+    tag: "1.38.0"

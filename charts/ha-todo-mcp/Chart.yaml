@@ -1,0 +1,14 @@
+apiVersion: v2
+name: ha-todo-mcp
+description: OAuth-protected MCP tools for one Home Assistant Local To-do list
+type: application
+version: 1.0.0
+# renovate: image=ghcr.io/joejulian/ha-todo-mcp
+appVersion: "v0.1.0"
+home: https://github.com/joejulian/ha-todo-mcp
+sources:
+  - https://github.com/joejulian/ha-todo-mcp
+maintainers:
+  - name: joejulian
+annotations:
+  org.opencontainers.image.source: https://github.com/joejulian/charts

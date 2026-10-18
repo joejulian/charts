@@ -1,0 +1,70 @@
+image:
+  repository: ghcr.io/leejet/stable-diffusion.cpp
+  # Published upstream Vulkan image for commit 2f886889e6e8b78738d6b87f7191f6018557c551.
+  tag: master-vulkan@sha256:2ad8a48a1b1cbc207541e788a40f393c7cc1fecfc6be96387fbf0a211c2f5323
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+# Relative LoRA discovery must not traverse the container filesystem root.
+workingDir: /sd.cpp
+command: [/sd-server]
+# Supply model arguments separately; the chart never downloads model weights.
+args: []
+env:
+  - name: XDG_CACHE_HOME
+    value: /tmp/cache
+resources:
+  requests:
+    cpu: "1"
+    memory: 2Gi
+  limits:
+    cpu: "4"
+    memory: 16Gi
+nodeSelector: {}
+tolerations: []
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+# Existing models are always mounted read-only. An empty claim uses emptyDir
+# for isolated fixtures or servers whose model paths are configured elsewhere.
+models:
+  existingClaim: ""
+temporaryStorage:
+  sizeLimit: 256Mi
+service:
+  port: 8080
+startupProbe:
+  httpGet:
+    path: /sdcpp/v1/capabilities
+    port: http
+  periodSeconds: 10
+  failureThreshold: 90
+readinessProbe:
+  httpGet:
+    path: /sdcpp/v1/capabilities
+    port: http
+  periodSeconds: 10
+  timeoutSeconds: 5
+livenessProbe:
+  tcpSocket:
+    port: http
+  periodSeconds: 30
+  timeoutSeconds: 5
+  failureThreshold: 5
+ingress:
+  enabled: false
+  className: ""
+  host: ""
+  annotations: {}
+networkPolicy:
+  enabled: false
+  ingressFrom: []
+# Additional declarative resources, such as a retained local PV and its PVC.
+extraObjects: []
+tests:
+  enabled: true
+  image:
+    repository: ghcr.io/joejulian/container-images/busybox
+    tag: "1.38.0"

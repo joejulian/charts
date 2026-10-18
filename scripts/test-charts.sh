@@ -413,6 +413,28 @@ run_chart_tests() {
   local namespace="$3"
 
   case "${chart_name}" in
+    stable-diffusion)
+      if helm template invalid "${REPO_ROOT}/charts/stable-diffusion" --set-json 'resources.limits=null' >/dev/null 2>&1; then
+        echo "stable-diffusion must reject missing memory/CPU limits" >&2
+        return 1
+      fi
+      kubectl -n "${namespace}" exec "deployment/${release_name}" -- python3 -c '
+from pathlib import Path
+assert Path("/sys/fs/cgroup/memory.max").read_text().strip() == "134217728"
+quota, period = map(int, Path("/sys/fs/cgroup/cpu.max").read_text().split())
+assert quota / period == 0.1
+try:
+    Path("/models/write-must-fail").write_text("bad")
+except OSError:
+    pass
+else:
+    raise AssertionError("model volume must be read-only")
+'
+      helm test "${release_name}" -n "${namespace}" --timeout 5m
+      ;;
+    ha-todo-mcp)
+      helm test "${release_name}" -n "${namespace}" --timeout 5m --logs
+      ;;
     mosquitto)
       kubectl -n "${namespace}" exec "deployment/${release_name}" -- \
         mosquitto_pub -h 127.0.0.1 -t ci/retention -m retained-fixture -q 1 -r

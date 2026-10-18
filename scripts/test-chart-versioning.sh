@@ -21,6 +21,10 @@ assert_level() {
   [[ "${actual}" == "${expected}" ]] || fail "${base} -> ${current}: expected level ${expected}, got ${actual}"
 }
 
+[[ "$(dependency_change_level '~4' '~5.1.0')" == 3 ]] || fail "tilde dependency major change was not detected"
+[[ "$(dependency_change_level '^1.2' '^1.3.0')" == 2 ]] || fail "caret dependency minor change was not detected"
+[[ "$(dependency_change_level '1.5.1' '5.1.0')" == 3 ]] || fail "exact dependency major change was not detected"
+
 assert_level 0 4.0.19.3009 4.0.19.3009
 assert_level 0 v1.2.3 1.2.3
 assert_level 1 4.0.17.2969 4.0.19.3009

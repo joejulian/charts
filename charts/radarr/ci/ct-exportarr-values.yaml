@@ -6,3 +6,5 @@ persistence:
 
 metrics:
   enabled: true
+  prometheusRule:
+    enabled: true

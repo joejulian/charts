@@ -3,3 +3,6 @@
 __pycache__/
 .kind/
 *.tgz
+
+# Dependencies are resolved from Chart.lock, never mixed with vendored copies.
+charts/*/charts/

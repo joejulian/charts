@@ -50,7 +50,7 @@ required_chart_bump_level() {
       continue
     fi
 
-    level="$(max_level "${level}" "$(version_change_level "${base_deps[${dep_name}]}" "${current_deps[${dep_name}]}")")"
+    level="$(max_level "${level}" "$(dependency_change_level "${base_deps[${dep_name}]}" "${current_deps[${dep_name}]}")")"
   done
 
   for dep_name in "${!current_deps[@]}"; do

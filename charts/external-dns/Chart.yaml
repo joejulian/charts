@@ -4,9 +4,9 @@ apiVersion: v2
 name: external-dns
 description: ExternalDNS deployment with configurable arguments and RBAC
 type: application
-version: "0.5.0"
+version: "0.6.0"
 # renovate: image=registry.k8s.io/external-dns/external-dns
-appVersion: "v0.23.0"
+appVersion: "v0.24.0"
 home: https://github.com/joejulian/charts/tree/main/charts/external-dns
 maintainers:
   - name: Joe Julian

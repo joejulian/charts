@@ -424,7 +424,11 @@ run_chart_tests() {
       kubectl -n "${namespace}" exec "deployment/${release_name}" -c mongodb -- \
         mongosh --quiet --port 27117 --eval \
         'quit(db.getSiblingDB("chart_fixture").marker.countDocuments({_id:"persistent",value:"survives-recreation"}) === 1 ? 0 : 1)'
-      helm test "${release_name}" -n "${namespace}" --timeout 5m --logs
+      if ! helm test "${release_name}" -n "${namespace}" --timeout 5m --logs; then
+        kubectl -n "${namespace}" get service,endpointslice -o yaml
+        kubectl -n "${namespace}" logs "deployment/${release_name}" -c main --tail=40 || true
+        return 1
+      fi
       ;;
     stable-diffusion)
       if helm template invalid "${REPO_ROOT}/charts/stable-diffusion" --set-json 'resources.limits=null' >/dev/null 2>&1; then

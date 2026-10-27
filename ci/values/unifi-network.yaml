@@ -4,4 +4,5 @@ controllers:
       nodeSelector: null
 persistence:
   data:
-    type: emptyDir
+    size: 1Gi
+    retain: false

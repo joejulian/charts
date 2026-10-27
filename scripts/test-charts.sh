@@ -413,6 +413,17 @@ run_chart_tests() {
   local namespace="$3"
 
   case "${chart_name}" in
+    unifi-network)
+      kubectl -n "${namespace}" exec "deployment/${release_name}" -c mongodb -- \
+        mongosh --quiet --port 27117 --eval \
+        'db.getSiblingDB("chart_fixture").marker.updateOne({_id:"persistent"},{$set:{value:"survives-recreation"}},{upsert:true})'
+      kubectl -n "${namespace}" rollout restart "deployment/${release_name}"
+      kubectl -n "${namespace}" rollout status "deployment/${release_name}" --timeout=5m
+      kubectl -n "${namespace}" exec "deployment/${release_name}" -c mongodb -- \
+        mongosh --quiet --port 27117 --eval \
+        'quit(db.getSiblingDB("chart_fixture").marker.countDocuments({_id:"persistent",value:"survives-recreation"}) === 1 ? 0 : 1)'
+      helm test "${release_name}" -n "${namespace}" --timeout 5m
+      ;;
     stable-diffusion)
       if helm template invalid "${REPO_ROOT}/charts/stable-diffusion" --set-json 'resources.limits=null' >/dev/null 2>&1; then
         echo "stable-diffusion must reject missing memory/CPU limits" >&2

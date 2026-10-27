@@ -1,3 +1,6 @@
+tests:
+  enabled: true
+
 controllers:
   main:
     type: deployment

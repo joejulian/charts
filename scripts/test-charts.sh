@@ -413,6 +413,23 @@ run_chart_tests() {
   local namespace="$3"
 
   case "${chart_name}" in
+    unifi-network)
+      kubectl -n "${namespace}" exec "deployment/${release_name}" -c mongodb -- \
+        sh -ec 'uname -r; ulimit -Sn; ulimit -Hn'
+      kubectl -n "${namespace}" exec "deployment/${release_name}" -c mongodb -- \
+        mongosh --quiet --port 27117 --eval \
+        'db.getSiblingDB("chart_fixture").marker.updateOne({_id:"persistent"},{$set:{value:"survives-recreation"}},{upsert:true})'
+      kubectl -n "${namespace}" rollout restart "deployment/${release_name}"
+      kubectl -n "${namespace}" rollout status "deployment/${release_name}" --timeout=5m
+      kubectl -n "${namespace}" exec "deployment/${release_name}" -c mongodb -- \
+        mongosh --quiet --port 27117 --eval \
+        'quit(db.getSiblingDB("chart_fixture").marker.countDocuments({_id:"persistent",value:"survives-recreation"}) === 1 ? 0 : 1)'
+      if ! helm test "${release_name}" -n "${namespace}" --timeout 5m --logs; then
+        kubectl -n "${namespace}" get service,endpointslice -o yaml
+        kubectl -n "${namespace}" logs "deployment/${release_name}" -c main --tail=40 || true
+        return 1
+      fi
+      ;;
     stable-diffusion)
       if helm template invalid "${REPO_ROOT}/charts/stable-diffusion" --set-json 'resources.limits=null' >/dev/null 2>&1; then
         echo "stable-diffusion must reject missing memory/CPU limits" >&2
@@ -507,6 +524,36 @@ setup_image_pull_secret() {
     --dry-run=client -o yaml | kubectl apply -f -
 }
 
+install_chart_with_diagnostics() {
+  local chart_name="$1" namespace="$2" release_name="$3"
+  shift 3
+  if [[ "${chart_name}" != "unifi-network" ]]; then
+    helm "$@"
+    return
+  fi
+
+  # A fresh database must not crash during installation. Report its first
+  # failure rather than hiding it behind Helm's deployment-ready timeout.
+  helm "$@" &
+  local helm_pid=$!
+  while kill -0 "${helm_pid}" 2>/dev/null; do
+    if kubectl -n "${namespace}" get pods -o json 2>/dev/null | jq -e '
+      any(.items[]?.status.containerStatuses[]?;
+        .name == "mongodb" and (.lastState.terminated.exitCode // 0) != 0)
+    ' >/dev/null; then
+      kubectl -n "${namespace}" get pods -o json | jq '
+        .items[] | {name:.metadata.name, containers:.status.containerStatuses}'
+      kubectl -n "${namespace}" logs "deployment/${release_name}" -c mongodb --previous --tail=80 || true
+      kubectl -n "${namespace}" logs "deployment/${release_name}" -c mongodb --tail=80 || true
+      kill "${helm_pid}" 2>/dev/null || true
+      wait "${helm_pid}" || true
+      return 1
+    fi
+    sleep 2
+  done
+  wait "${helm_pid}"
+}
+
 test_chart() {
   local chart_dir="$1"
   local chart_name
@@ -555,12 +602,12 @@ test_chart() {
     helm "${previous_helm_args[@]}"
   fi
 
-  helm "${helm_args[@]}"
+  install_chart_with_diagnostics "${chart_name}" "${namespace}" "${release_name}" "${helm_args[@]}"
   wait_for_workloads "${namespace}"
 
   run_chart_tests "${chart_name}" "${release_name}" "${namespace}"
 
-  helm "${helm_args[@]}"
+  install_chart_with_diagnostics "${chart_name}" "${namespace}" "${release_name}" "${helm_args[@]}"
   wait_for_workloads "${namespace}"
   run_chart_tests "${chart_name}" "${release_name}" "${namespace}"
 }

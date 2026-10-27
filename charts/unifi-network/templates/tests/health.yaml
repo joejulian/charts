@@ -1,0 +1,33 @@
+{{- if .Values.tests.enabled }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ .Release.Name }}-health
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 999
+    runAsGroup: 999
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: health
+      {{- $image := .Values.controllers.main.containers.main.image }}
+      image: {{ $image.repository }}{{ if $image.digest }}@{{ $image.digest }}{{ else }}:{{ $image.tag | default .Chart.AppVersion }}{{ end }}
+      command: [sh, -ec]
+      args:
+        - |
+          # Service endpoints can lag the replacement pod's Ready condition.
+          response=$(curl -fkSs --connect-timeout 3 --max-time 10 --retry 10 --retry-delay 1 --retry-connrefused --retry-max-time 60 https://{{ .Release.Name }}:8443/status)
+          printf '%s\n' "$response"
+          printf '%s\n' "$response" | grep -q '"up":true'
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: [ALL]
+{{- end }}

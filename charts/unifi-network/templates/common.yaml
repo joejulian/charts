@@ -1,0 +1,16 @@
+{{- include "bjw-s.common.loader.init" . -}}
+{{- define "unifi-network.defaults" -}}
+global:
+  nameOverride: {{ .Values.global.nameOverride | default .Release.Name | quote }}
+{{- $image := .Values.controllers.main.containers.main.image -}}
+{{- if and (empty $image.tag) (empty $image.digest) }}
+controllers:
+  main:
+    containers:
+      main:
+        image:
+          tag: {{ .Chart.AppVersion | quote }}
+{{- end }}
+{{- end -}}
+{{- $_ := mergeOverwrite .Values (include "unifi-network.defaults" . | fromYaml) -}}
+{{ include "bjw-s.common.loader.generate" . }}

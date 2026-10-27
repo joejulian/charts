@@ -26,8 +26,10 @@ claim. A single replica and Recreate strategy prevent concurrent controllers
 sharing the same database. Back up both configuration and a logical MongoDB dump
 before upgrades; retaining a volume is not a backup.
 
-MongoDB 8 requires AVX on x86-64. The default node selector uses Node Feature
-Discovery's standard AVX label. ARM64 deployments should override this selector
+MongoDB 8 requires supported CPU microarchitectures, including Haswell or newer
+Intel Core CPUs. The conservative default uses Node Feature Discovery's AVX2
+label; AVX alone does not establish the supported Intel CPU floor. ARM64
+deployments should override this selector
 with suitable architecture placement after checking MongoDB's CPU requirements.
 
 ## Migrating an existing controller

@@ -9,9 +9,9 @@ controllers:
     pod:
       automountServiceAccountToken: false
       terminationGracePeriodSeconds: 120
-      # MongoDB 8 requires AVX on x86-64. Override placement for ARM64.
+      # Conservative x86 placement for MongoDB's Haswell-or-newer Intel floor.
       nodeSelector:
-        feature.node.kubernetes.io/cpu-cpuid.AVX: "true"
+        feature.node.kubernetes.io/cpu-cpuid.AVX2: "true"
       securityContext:
         runAsNonRoot: true
         runAsUser: 999

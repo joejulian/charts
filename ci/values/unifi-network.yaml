@@ -1,0 +1,7 @@
+controllers:
+  main:
+    pod:
+      nodeSelector: null
+persistence:
+  data:
+    type: emptyDir

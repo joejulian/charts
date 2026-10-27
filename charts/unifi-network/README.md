@@ -8,7 +8,13 @@ Service or externally reachable database listener.
 
 The chart uses the common v5 library (Kubernetes 1.31+, Helm 3.18+). Controller,
 Service, ingress, configMaps and persistence settings use its values interface.
-The main image defaults to Chart.appVersion. Renovate tracks the application
+The main image defaults to Chart.appVersion. Versioned application image tags
+are immutable. Deployments that also need base-image security rebuilds should
+explicitly select the documented `latest` channel with a digest pin and have
+Renovate update that digest. Application major upgrades remain gated by review
+of the upstream application pin in the image repository.
+
+Renovate tracks the application
 image and MongoDB mirror independently; the mirror deliberately stays on the
 application-supported MongoDB 8.0 line. Do not upgrade database majors without
 checking UniFi compatibility and rehearsing a logical restore.

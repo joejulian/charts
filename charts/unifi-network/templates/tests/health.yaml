@@ -21,7 +21,10 @@ spec:
       image: {{ $image.repository }}{{ if $image.digest }}@{{ $image.digest }}{{ else }}:{{ $image.tag | default .Chart.AppVersion }}{{ end }}
       command: [sh, -ec]
       args:
-        - 'curl -fkSs --max-time 10 https://{{ .Release.Name }}:8443/status | grep -q ''"up":true'''
+        - |
+          response=$(curl -fkSs --max-time 10 https://{{ .Release.Name }}:8443/status)
+          printf '%s\n' "$response"
+          printf '%s\n' "$response" | grep -q '"up":true'
       securityContext:
         allowPrivilegeEscalation: false
         capabilities:

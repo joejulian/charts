@@ -8,11 +8,10 @@ Service or externally reachable database listener.
 
 The chart uses the common v5 library (Kubernetes 1.31+, Helm 3.18+). Controller,
 Service, ingress, configMaps and persistence settings use its values interface.
-The main image defaults to Chart.appVersion. Versioned application image tags
-are immutable. Deployments that also need base-image security rebuilds should
-explicitly select the documented `latest` channel with a digest pin and have
-Renovate update that digest. Application major upgrades remain gated by review
-of the upstream application pin in the image repository.
+The main image defaults to Chart.appVersion. Deployments should select an
+explicit application version pinned by digest, with Renovate updating those
+pins. Application image tags are immutable; application major upgrades require
+review in the image repository.
 
 Renovate tracks the application
 image and MongoDB mirror independently; the mirror deliberately stays on the

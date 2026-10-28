@@ -1,0 +1,3 @@
+configMapName: zigbee-bridge-config
+existingSecret: zigbee-bridge-credentials
+fullnameOverride: zigbee-bridge

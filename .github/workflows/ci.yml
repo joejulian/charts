@@ -42,6 +42,8 @@ jobs:
         run: ct lint --config ct.yaml --all
       - name: Verify Common Library Migration
         run: python3 scripts/test-common-v5.py
+      - name: Verify Zigbee bridge ownership and persistence
+        run: python3 scripts/test-zigbee-bridge.py
 
   install-upgrade-e2e:
     # MongoDB 8 rejects kernels 6.19–7.0.13; this runner uses supported 6.8.
@@ -93,6 +95,8 @@ jobs:
         if: steps.charts.outputs.chart_count != '0'
         env:
           ONSTAR2MQTT_TEST_SECRET: ${{ secrets.ONSTAR2MQTT_TEST_SECRET }}
+          ZIGBEE_BRIDGE_TEST_IMAGE: ${{ vars.ZIGBEE_BRIDGE_TEST_IMAGE }}
+          ZIGBEE_BRIDGE_PULL_CONFIG_JSON: ${{ secrets.ZIGBEE_BRIDGE_PULL_CONFIG_JSON }}
           CHARTS: ${{ steps.charts.outputs.charts }}
           TARGET_BRANCH: ${{ github.event.pull_request.base.ref || 'main' }}
         run: |

@@ -413,6 +413,27 @@ run_chart_tests() {
   local namespace="$3"
 
   case "${chart_name}" in
+    zigbee-bridge)
+      kubectl -n "${namespace}" exec "statefulset/zigbee-bridge" -- bash -ec '
+test "$(id -u)" = 10001
+test -s /var/lib/zigbee-bridge/data/registry.sqlite3
+mode=$(stat -c %a /var/lib/zigbee-bridge/data)
+test "$((8#$mode & 077))" = 0
+printf fixture-persistence > /var/lib/zigbee-bridge/data/fixture-marker
+exec 3<>/dev/tcp/127.0.0.1/8080
+printf "GET / HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3
+IFS= read -r response <&3
+[[ "$response" == "HTTP/1.1 200"* ]]
+'
+      kubectl -n "${namespace}" rollout restart statefulset/zigbee-bridge
+      kubectl -n "${namespace}" rollout status statefulset/zigbee-bridge --timeout=5m
+      kubectl -n "${namespace}" exec statefulset/zigbee-bridge -- bash -ec '
+test "$(cat /var/lib/zigbee-bridge/data/fixture-marker)" = fixture-persistence
+test -s /var/lib/zigbee-bridge/data/registry.sqlite3
+mode=$(stat -c %a /var/lib/zigbee-bridge/data)
+test "$((8#$mode & 077))" = 0
+'
+      ;;
     unifi-network)
       kubectl -n "${namespace}" exec "deployment/${release_name}" -c mongodb -- \
         sh -ec 'uname -r; ulimit -Sn; ulimit -Hn'
@@ -481,6 +502,20 @@ setup_chart_fixtures() {
   local namespace="$2"
 
   case "${chart_name}" in
+    zigbee-bridge)
+      kubectl -n "${namespace}" create configmap zigbee-bridge-config \
+        --from-file=config.toml="${REPO_ROOT}/ci/fixtures/zigbee-bridge/config.toml" \
+        --dry-run=client -o yaml | kubectl apply -f -
+      kubectl -n "${namespace}" create secret generic zigbee-bridge-credentials \
+        --from-literal=ZIGBEE_FRONTEND_TOKEN=fixture-token-not-a-real-credential \
+        --dry-run=client -o yaml | kubectl apply -f -
+      if [[ -n "${ZIGBEE_BRIDGE_PULL_CONFIG_JSON:-}" ]]; then
+        printf '%s' "${ZIGBEE_BRIDGE_PULL_CONFIG_JSON}" | \
+          kubectl -n "${namespace}" create secret generic zigbee-bridge-registry \
+          --type=kubernetes.io/dockerconfigjson --from-file=.dockerconfigjson=/dev/stdin \
+          --dry-run=client -o yaml | kubectl apply -f -
+      fi
+      ;;
     postfix)
       kubectl -n "${namespace}" create configmap postfix \
         --from-file=main.cf="${REPO_ROOT}/ci/fixtures/postfix/main.cf" \
@@ -572,6 +607,27 @@ test_chart() {
   if [[ "${chart_name}" == "onstar2mqtt" && -z "${ONSTAR2MQTT_TEST_SECRET:-}" ]]; then
     echo "Skipping ${chart_name}; set ONSTAR2MQTT_TEST_SECRET to enable credentialed e2e coverage."
     return
+  fi
+
+  if [[ "${chart_name}" == "zigbee-bridge" ]]; then
+    python3 "${REPO_ROOT}/scripts/test-zigbee-bridge.py"
+    if [[ -z "${ZIGBEE_BRIDGE_TEST_IMAGE:-}" ]]; then
+      echo "Skipping zigbee-bridge install; set ZIGBEE_BRIDGE_TEST_IMAGE to a published image. Render checks passed."
+      return
+    fi
+    if [[ "${ZIGBEE_BRIDGE_TEST_IMAGE}" == *@sha256:* ]]; then
+      helm_args+=(--set-string "image.repository=${ZIGBEE_BRIDGE_TEST_IMAGE%@*}" \
+        --set-string "image.digest=${ZIGBEE_BRIDGE_TEST_IMAGE#*@}")
+    elif [[ "${ZIGBEE_BRIDGE_TEST_IMAGE##*/}" == *:* ]]; then
+      helm_args+=(--set-string "image.repository=${ZIGBEE_BRIDGE_TEST_IMAGE%:*}" \
+        --set-string "image.tag=${ZIGBEE_BRIDGE_TEST_IMAGE##*:}")
+    else
+      echo "ZIGBEE_BRIDGE_TEST_IMAGE needs an explicit tag or sha256 digest" >&2
+      return 1
+    fi
+    if [[ -n "${ZIGBEE_BRIDGE_PULL_CONFIG_JSON:-}" ]]; then
+      helm_args+=(--set "imagePullSecrets[0].name=zigbee-bridge-registry")
+    fi
   fi
 
   if [[ -f "${values_file}" ]]; then

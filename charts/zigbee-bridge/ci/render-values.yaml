@@ -1,0 +1,5 @@
+image:
+  repository: registry.example.invalid/zigbee-bridge
+  tag: test
+configMapName: fixture-config
+existingSecret: fixture-credentials

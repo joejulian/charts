@@ -1,0 +1,11 @@
+apiVersion: v2
+name: zigbee-bridge
+description: Rust Zigbee-to-MQTT service with the Zigbee2MQTT frontend
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://github.com/joejulian/charts/tree/main/charts/zigbee-bridge
+maintainers:
+  - name: joejulian
+annotations:
+  org.opencontainers.image.source: https://github.com/joejulian/charts

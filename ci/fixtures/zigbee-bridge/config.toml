@@ -1,0 +1,15 @@
+# Disposable service fixture: no physical adapter and no external broker.
+data_dir = "/var/lib/zigbee-bridge/data"
+[mqtt]
+host = "127.0.0.1"
+port = 1
+[coordinator]
+backend = "simulated"
+[frontend]
+listen = "0.0.0.0:8080"
+assets = "/usr/share/zigbee-bridge/frontend"
+token_env = "ZIGBEE_FRONTEND_TOKEN"
+[[devices]]
+name = "fixture_light"
+address = "0x0000000000000001"
+model = "GL-C-008P"

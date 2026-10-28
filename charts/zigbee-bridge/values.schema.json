@@ -3,6 +3,7 @@
   "type": "object",
   "properties": {
     "replicaCount": {"type": "integer", "minimum": 0, "maximum": 1},
+    "maintenance": {"type": "boolean"},
     "image": {
       "type": "object",
       "properties": {

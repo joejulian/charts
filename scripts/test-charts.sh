@@ -666,6 +666,37 @@ test_chart() {
   install_chart_with_diagnostics "${chart_name}" "${namespace}" "${release_name}" "${helm_args[@]}"
   wait_for_workloads "${namespace}"
   run_chart_tests "${chart_name}" "${release_name}" "${namespace}"
+
+  if [[ "${chart_name}" == "zigbee-bridge" ]]; then
+    helm "${helm_args[@]}" --set maintenance=true
+    wait_for_workloads "${namespace}"
+    kubectl -n "${namespace}" exec statefulset/zigbee-bridge -- bash -ec '
+test "$(cat /proc/1/comm)" = sleep
+if (echo > /dev/tcp/127.0.0.1/8080) 2>/dev/null; then
+  echo "service listener remained open in maintenance" >&2
+  exit 1
+fi
+'
+    local no_endpoints=false
+    for _ in {1..10}; do
+      if kubectl -n "${namespace}" get endpointslices \
+        -l kubernetes.io/service-name=zigbee-bridge -o json | \
+        jq -e '[.items[].endpoints[]?] | length == 0' >/dev/null; then
+        no_endpoints=true
+        break
+      fi
+      sleep 1
+    done
+    [[ "${no_endpoints}" == true ]] || return 1
+    # A successful stopped-registry backup proves the previous service released
+    # ownership. This uses synthetic data and never opens a coordinator.
+    kubectl -n "${namespace}" exec statefulset/zigbee-bridge -- \
+      zigbee-bridge registry-backup --config /etc/zigbee-bridge/config.toml \
+      --output "/var/lib/zigbee-bridge/data/maintenance-backup-$(date +%s%N).json"
+    helm "${helm_args[@]}" --set maintenance=false
+    wait_for_workloads "${namespace}"
+    run_chart_tests "${chart_name}" "${release_name}" "${namespace}"
+  fi
 }
 
 main() {

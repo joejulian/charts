@@ -63,3 +63,14 @@ stateful = next(obj for obj in objects if obj["kind"] == "StatefulSet")
 assert stateful["spec"]["replicas"] == 0
 assert stateful["spec"]["template"]["spec"]["containers"][0]["image"].endswith("@sha256:" + "a" * 64)
 print("zigbee-bridge ownership, image, persistence and security render checks passed")
+
+objects = render("--set", "maintenance=true")
+stateful = next(obj for obj in objects if obj["kind"] == "StatefulSet")
+service = next(obj for obj in objects if obj["kind"] == "Service")
+pod = stateful["spec"]["template"]
+container = pod["spec"]["containers"][0]
+assert container["command"] == ["/bin/sleep"]
+assert container["args"] == ["infinity"]
+assert not any(key.endswith("Probe") for key in container)
+assert service["spec"]["selector"]["zigbee-bridge/mode"] != pod["metadata"]["labels"]["zigbee-bridge/mode"]
+print("maintenance does not start the adapter owner or receive service traffic")

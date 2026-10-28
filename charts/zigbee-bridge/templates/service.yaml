@@ -12,3 +12,4 @@ spec:
       targetPort: http
   selector:
     {{- include "zigbee-bridge.selectorLabels" . | nindent 4 }}
+    zigbee-bridge/mode: serving

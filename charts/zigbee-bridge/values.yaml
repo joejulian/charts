@@ -1,5 +1,8 @@
 # One owner per coordinator. Zero stops this service for maintenance or rollback.
 replicaCount: 1
+# Keep the pod available for explicit backup/power-check commands without
+# starting the service or opening its adapter. Public traffic is withdrawn.
+maintenance: false
 image:
   # Set an explicitly published repository and immutable tag or digest.
   repository: ""

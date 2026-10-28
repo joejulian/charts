@@ -27,6 +27,17 @@ Stop the previous adapter owner before starting this one. Do not share its
 data directory with Zigbee2MQTT. Preserve the original workload, network and
 data for rollback without resetting or re-pairing the coordinator.
 
+`maintenance: true` gracefully replaces the service with an idle pod that opens
+no coordinator connection. It withdraws that pod from the Service and disables
+frontend probes. This provides an explicit place to run a one-shot backup or
+`power-check` through `kubectl exec` without running the service concurrently
+or automatically repeating a power exercise after it exits. Wait for the
+StatefulSet rollout before starting any adapter command; another process or
+release can still own the adapter. Create a private output directory first and
+read the CLI's qualification procedure. Set maintenance back to false to resume
+normal operation. An idle maintenance pod is operationally ready but does not
+indicate application or device health.
+
 Persistence creates a retained StatefulSet PVC by default. An `existingClaim`
 must belong to this application. Disabling persistence uses `emptyDir` and
 loses registry/configuration changes on pod recreation; use it only for

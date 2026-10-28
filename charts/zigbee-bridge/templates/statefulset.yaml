@@ -14,6 +14,7 @@ spec:
     metadata:
       labels:
         {{- include "zigbee-bridge.selectorLabels" . | nindent 8 }}
+        zigbee-bridge/mode: {{ ternary "maintenance" "serving" .Values.maintenance }}
       {{- with .Values.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8 }}
@@ -31,7 +32,12 @@ spec:
         - name: bridge
           image: {{ include "zigbee-bridge.image" . | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.maintenance }}
+          command: [/bin/sleep]
+          args: [infinity]
+          {{- else }}
           args: [run, --config, /etc/zigbee-bridge/config.toml]
+          {{- end }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           {{- with .Values.existingSecret }}
@@ -42,7 +48,7 @@ spec:
           ports:
             - name: http
               containerPort: 8080
-          {{- if .Values.probes.enabled }}
+          {{- if and .Values.probes.enabled (not .Values.maintenance) }}
           startupProbe:
             tcpSocket:
               port: http

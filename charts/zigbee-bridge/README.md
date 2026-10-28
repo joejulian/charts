@@ -66,3 +66,9 @@ fixture passes it to Kubernetes through stdin. Without an image, CI explicitly
 skips installation. The fixture uses a simulated coordinator and an unavailable
 loopback MQTT port: it verifies the frontend listener, nonroot private storage
 and persistence through replacement, not radio or broker compatibility.
+
+Local validation on Kubernetes 1.36.1 passed installation, upgrade, pod
+replacement, private registry access as UID 10001, retained PVC data,
+maintenance traffic withdrawal, a stopped-registry backup and service resume.
+That run used a locally built development image; it does not qualify registry
+publication, ARM64 execution or physical coordinator access.

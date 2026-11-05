@@ -3,7 +3,7 @@ annotations:
   org.opencontainers.image.source: https://github.com/joejulian/charts
 apiVersion: v2
 name: openldap
-version: "0.1.1"
+version: "0.2.0"
 # renovate: image=ghcr.io/joejulian/container-images/openldap
 appVersion: "2.7.1-1"
 description: OpenLDAP chart

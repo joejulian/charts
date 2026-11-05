@@ -28,6 +28,8 @@ securityContext: {}
 # is set. It retains each source-format directory under the migration path.
 migration:
   enabled: true
+  # Optional budget for the conditional LDIF import initializer.
+  resources: {}
   databaseNumber: 1
   databaseDirectory: ""
   terminationGracePeriodSeconds: 300

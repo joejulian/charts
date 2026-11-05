@@ -42,6 +42,8 @@ jobs:
         run: ct lint --config ct.yaml --all
       - name: Verify Common Library Migration
         run: python3 scripts/test-common-v5.py
+      - name: Verify Kadalu resource configuration
+        run: python3 scripts/test-kadalu-resources.py
       - name: Verify Zigbee bridge ownership and persistence
         run: python3 scripts/test-zigbee-bridge.py
 

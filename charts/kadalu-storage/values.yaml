@@ -8,3 +8,7 @@ migration:
 
 # renovate: image=ghcr.io/joejulian/kadalu-server
 image: ghcr.io/joejulian/kadalu-server:1.4.0-rc.5
+
+# Optional budgets consumed by an operator with component-resource support.
+# Empty defaults preserve compatibility with older operators.
+resources: {}

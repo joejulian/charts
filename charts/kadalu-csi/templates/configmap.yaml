@@ -16,3 +16,6 @@ data:
   kubeletDir: {{ .Values.kubeletDir | quote }}
   kubernetesDistro: {{ .Values.kubernetesDistro | quote }}
   verbose: {{ .Values.verbose | quote }}
+  {{- with .Values.resources }}
+  resources: {{ . | toJson | quote }}
+  {{- end }}

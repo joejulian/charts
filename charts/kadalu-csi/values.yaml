@@ -20,3 +20,7 @@ images:
   livenessProbe: registry.k8s.io/sig-storage/livenessprobe:v2.19.0@sha256:06da0d5b8908072f2e4522692aee8dc119fba7247a9658497e1153992cd777e9
   # renovate: image=docker.io/library/busybox
   logging: docker.io/library/busybox:1.38.0@sha256:dc2d74b28e4cf8984fa52af1f39bc7c3d9c73760b41a74d629f5d11b1ab28616
+
+# Optional budgets consumed by an operator with component-resource support.
+# Empty defaults preserve compatibility with older operators.
+resources: {}

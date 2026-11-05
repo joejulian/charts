@@ -2,7 +2,14 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "additionalProperties": true,
-  "required": ["configMapName", "version", "image", "kubernetesDistro", "verbose", "migration"],
+  "required": [
+    "configMapName",
+    "version",
+    "image",
+    "kubernetesDistro",
+    "verbose",
+    "migration"
+  ],
   "properties": {
     "configMapName": {
       "type": "string",
@@ -10,19 +17,100 @@
       "maxLength": 63,
       "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
     },
-    "version": {"type": "string", "minLength": 1},
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
     "image": {
       "type": "string",
       "pattern": "^[^[:space:]]+(:[^@[:space:]]+)?(@sha256:[a-f0-9]{64})?$"
     },
-    "kubernetesDistro": {"type": "string", "minLength": 1},
-    "verbose": {"type": "string", "enum": ["yes", "no"]},
+    "kubernetesDistro": {
+      "type": "string",
+      "minLength": 1
+    },
+    "verbose": {
+      "type": "string",
+      "enum": [
+        "yes",
+        "no"
+      ]
+    },
     "migration": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["retainDuringOperatorHandoff"],
+      "required": [
+        "retainDuringOperatorHandoff"
+      ],
       "properties": {
-        "retainDuringOperatorHandoff": {"type": "boolean"}
+        "retainDuringOperatorHandoff": {
+          "type": "boolean"
+        }
+      }
+    },
+    "resources": {
+      "$ref": "#/definitions/resourceRequirements"
+    }
+  },
+  "definitions": {
+    "cpuQuantity": {
+      "oneOf": [
+        {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        {
+          "type": "string",
+          "pattern": "^(?:[1-9][0-9]*(?:\\.[0-9]+)?|0\\.[0-9]*[1-9][0-9]*)(?:m)?$"
+        }
+      ]
+    },
+    "resourceQuantity": {
+      "oneOf": [
+        {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        {
+          "type": "string",
+          "pattern": "^(?:[1-9][0-9]*(?:\\.[0-9]+)?|0\\.[0-9]*[1-9][0-9]*)(?:m|Ki|Mi|Gi|Ti|Pi|Ei|k|M|G|T|P|E)?$"
+        }
+      ]
+    },
+    "resourceRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requests": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "cpu": {
+              "$ref": "#/definitions/cpuQuantity"
+            },
+            "memory": {
+              "$ref": "#/definitions/resourceQuantity"
+            },
+            "ephemeral-storage": {
+              "$ref": "#/definitions/resourceQuantity"
+            }
+          }
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "cpu": {
+              "$ref": "#/definitions/cpuQuantity"
+            },
+            "memory": {
+              "$ref": "#/definitions/resourceQuantity"
+            },
+            "ephemeral-storage": {
+              "$ref": "#/definitions/resourceQuantity"
+            }
+          }
+        }
       }
     }
   }

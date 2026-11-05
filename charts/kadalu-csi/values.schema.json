@@ -2,32 +2,107 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "additionalProperties": true,
-  "required": ["configMapName", "version", "kubeletDir", "kubernetesDistro", "verbose", "migration", "images"],
+  "required": [
+    "configMapName",
+    "version",
+    "kubeletDir",
+    "kubernetesDistro",
+    "verbose",
+    "migration",
+    "images"
+  ],
   "properties": {
-    "configMapName": {"$ref": "#/definitions/dnsLabel"},
-    "version": {"type": "string", "minLength": 1},
-    "kubeletDir": {"type": "string", "pattern": "^/"},
-    "kubernetesDistro": {"type": "string", "minLength": 1},
-    "verbose": {"type": "string", "enum": ["yes", "no"]},
+    "configMapName": {
+      "$ref": "#/definitions/dnsLabel"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "kubeletDir": {
+      "type": "string",
+      "pattern": "^/"
+    },
+    "kubernetesDistro": {
+      "type": "string",
+      "minLength": 1
+    },
+    "verbose": {
+      "type": "string",
+      "enum": [
+        "yes",
+        "no"
+      ]
+    },
     "migration": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["retainDuringOperatorHandoff"],
+      "required": [
+        "retainDuringOperatorHandoff"
+      ],
       "properties": {
-        "retainDuringOperatorHandoff": {"type": "boolean"}
+        "retainDuringOperatorHandoff": {
+          "type": "boolean"
+        }
       }
     },
     "images": {
       "type": "object",
-      "required": ["driver", "nodeDriverRegistrar", "provisioner", "resizer", "livenessProbe", "logging"],
+      "required": [
+        "driver",
+        "nodeDriverRegistrar",
+        "provisioner",
+        "resizer",
+        "livenessProbe",
+        "logging"
+      ],
       "additionalProperties": false,
       "properties": {
-        "driver": {"$ref": "#/definitions/imageRef"},
-        "nodeDriverRegistrar": {"$ref": "#/definitions/imageRef"},
-        "provisioner": {"$ref": "#/definitions/imageRef"},
-        "resizer": {"$ref": "#/definitions/imageRef"},
-        "livenessProbe": {"$ref": "#/definitions/imageRef"},
-        "logging": {"$ref": "#/definitions/imageRef"}
+        "driver": {
+          "$ref": "#/definitions/imageRef"
+        },
+        "nodeDriverRegistrar": {
+          "$ref": "#/definitions/imageRef"
+        },
+        "provisioner": {
+          "$ref": "#/definitions/imageRef"
+        },
+        "resizer": {
+          "$ref": "#/definitions/imageRef"
+        },
+        "livenessProbe": {
+          "$ref": "#/definitions/imageRef"
+        },
+        "logging": {
+          "$ref": "#/definitions/imageRef"
+        }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "csi-node-driver-registrar": {
+          "$ref": "#/definitions/resourceRequirements"
+        },
+        "kadalu-nodeplugin": {
+          "$ref": "#/definitions/resourceRequirements"
+        },
+        "csi-liveness-probe": {
+          "$ref": "#/definitions/resourceRequirements"
+        },
+        "kadalu-logging": {
+          "$ref": "#/definitions/resourceRequirements"
+        },
+        "kadalu-provisioner": {
+          "$ref": "#/definitions/resourceRequirements"
+        },
+        "csi-provisioner": {
+          "$ref": "#/definitions/resourceRequirements"
+        },
+        "csi-resizer": {
+          "$ref": "#/definitions/resourceRequirements"
+        }
       }
     }
   },
@@ -41,6 +116,66 @@
     "imageRef": {
       "type": "string",
       "pattern": "^[^[:space:]]+(:[^@[:space:]]+)?(@sha256:[a-f0-9]{64})?$"
+    },
+    "cpuQuantity": {
+      "oneOf": [
+        {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        {
+          "type": "string",
+          "pattern": "^(?:[1-9][0-9]*(?:\\.[0-9]+)?|0\\.[0-9]*[1-9][0-9]*)(?:m)?$"
+        }
+      ]
+    },
+    "resourceQuantity": {
+      "oneOf": [
+        {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        {
+          "type": "string",
+          "pattern": "^(?:[1-9][0-9]*(?:\\.[0-9]+)?|0\\.[0-9]*[1-9][0-9]*)(?:m|Ki|Mi|Gi|Ti|Pi|Ei|k|M|G|T|P|E)?$"
+        }
+      ]
+    },
+    "resourceRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requests": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "cpu": {
+              "$ref": "#/definitions/cpuQuantity"
+            },
+            "memory": {
+              "$ref": "#/definitions/resourceQuantity"
+            },
+            "ephemeral-storage": {
+              "$ref": "#/definitions/resourceQuantity"
+            }
+          }
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "cpu": {
+              "$ref": "#/definitions/cpuQuantity"
+            },
+            "memory": {
+              "$ref": "#/definitions/resourceQuantity"
+            },
+            "ephemeral-storage": {
+              "$ref": "#/definitions/resourceQuantity"
+            }
+          }
+        }
+      }
     }
   }
 }

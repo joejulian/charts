@@ -2,7 +2,7 @@ apiVersion: v2
 name: unifi-network
 description: UniFi Network with rootless startup and a private MongoDB sidecar
 type: application
-version: 1.0.0
+version: "1.0.1"
 # renovate: image=ghcr.io/joejulian/container-images/unifi-network
 appVersion: "10.6.109"
 annotations:

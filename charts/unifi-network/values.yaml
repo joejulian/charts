@@ -58,7 +58,7 @@ controllers:
         image:
           repository: ghcr.io/joejulian/container-images/mongodb
           # renovate: image=ghcr.io/joejulian/container-images/mongodb
-          tag: "8.0.34"
+          tag: "8.0.38"
         command: [mongod]
         args: [--bind_ip, "127.0.0.1", --port, "27117", --dbpath, /data/db]
         securityContext:

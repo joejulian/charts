@@ -4,9 +4,9 @@ apiVersion: v2
 name: onstar2mqtt
 description: OnStar to MQTT bridge
 type: application
-version: "0.2.0"
+version: "0.2.1"
 # renovate: image=docker.io/bigthundersr/onstar2mqtt
-appVersion: "2.11.0"
+appVersion: "2.11.1"
 home: https://github.com/joejulian/charts/tree/master/charts/onstar2mqtt
 maintainers:
   - name: Joe Julian

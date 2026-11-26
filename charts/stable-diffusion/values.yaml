@@ -1,7 +1,7 @@
 image:
   repository: ghcr.io/leejet/stable-diffusion.cpp
   # Published upstream Vulkan image for commit 2f886889e6e8b78738d6b87f7191f6018557c551.
-  tag: master-vulkan@sha256:ae321cc0fdbab030222ccfb24e4f1d73c221f09e6052679f61752a22ea3870b5
+  tag: master-vulkan@sha256:e1de3041980dcdbc35a9864c5b9205a297a0bfd3f0acf85dd393d70fdf8f8612
   pullPolicy: IfNotPresent
 imagePullSecrets: []
 # Relative LoRA discovery must not traverse the container filesystem root.
